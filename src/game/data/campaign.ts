@@ -30,6 +30,7 @@ export const keywordRules: Record<string, string> = {
   AP: "Action Points fuel movement, attacks, cards, defence, and interactions.",
   Recovery: "At end of round, living figures regain AP equal to Recovery, up to Max AP.",
   Wait: "A 0 AP delay. The active figure keeps all AP, moves to the end of the current initiative order, and the next ready figure acts.",
+  "Line of Sight": "A hero reveals any tile they can see. Walls and closed doors block sight; open doors allow sight through.",
   Pull: "If you are not the monster's Current Target, reduce Pressure. Below 0, you become Current Target at Pressure 1.",
   Hold: "If you are Current Target, increase Pressure. Otherwise it works like Pull.",
   Pressure: "A 0 to 3 grip showing how committed a monster is to its Current Target.",

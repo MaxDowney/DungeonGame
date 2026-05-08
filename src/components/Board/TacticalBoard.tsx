@@ -20,13 +20,13 @@ import type { Position, Tile, Unit } from "../../game/types";
 
 const tileTitle = (tile: Tile) =>
   !tile.revealed
-    ? "Unexplored room"
+    ? "Unknown tile"
     : tile.label
       ? `${tile.label} (${tile.type})`
       : tile.type.replace("-", " ");
 
 const tileTooltip = (tile: Tile): string => {
-  if (!tile.revealed) return "Unexplored: this room or corridor is hidden until a hero enters or opens the way.";
+  if (!tile.revealed) return "Unexplored: this tile is unknown until a hero has line of sight to it.";
   const name = tile.label ? `${tile.label}: ` : "";
   const text: Record<string, string> = {
     floor: "Floor: normal walkable tile.",

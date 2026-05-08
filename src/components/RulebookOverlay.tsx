@@ -17,7 +17,7 @@ const ruleSections = [
   {
     title: "Map Setup And Exploration",
     text:
-      "Place heroes on the starting tiles, reveal the starting room, read its room text, and keep unrevealed rooms hidden under fog. Empty void outside rooms and corridors is not playable space. Doors block movement while closed; adjacent heroes can Interact to open them. When a door opens, line of sight can reveal monsters beyond it and add them to the active dungeon threat.",
+      "Place heroes on the starting tiles, reveal what the party can see, read the starting room text, and keep unseen tiles under fog. Empty void outside rooms and corridors is not playable space. Doors block movement while closed; adjacent heroes can Interact to open them. When a door opens, line of sight reveals tiles and monsters beyond it and adds visible monsters to the active dungeon threat.",
   },
   {
     title: "Round Sequence",
@@ -42,7 +42,7 @@ const ruleSections = [
   {
     title: "Line Of Sight And Range",
     text:
-      "Ranges use grid distance shown by the board. Ranged and many magic attacks require line of sight. Walls block line of sight. Open doors allow sight through them. Revealed monsters that can be seen become valid targets even if the room itself is still mostly unexplored.",
+      "Ranges use grid distance shown by the board. Ranged and many magic attacks require line of sight. Walls block line of sight. Open doors allow sight through them. Fog of war clears tile by tile whenever a hero can see that tile; the party does not need to step into a room to learn what visible tiles actually are.",
   },
   {
     title: "Attack Roll",

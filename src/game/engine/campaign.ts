@@ -205,6 +205,9 @@ export const setupMapState = (campaign: CampaignState, mapIndex = campaign.curre
     return !roomId || roomId === initialRoomId;
   };
   const revealedMonsterIds = monsters.filter(isInitiallyRevealedMonster).map((monster) => monster.id);
+  const revealedTileKeys = map.tiles
+    .filter((tile) => tile.type !== "void" && (!initialRoomId || tile.room === initialRoomId))
+    .map((tile) => `${tile.x},${tile.y}`);
   const initialInitiativeUnitIds = [...heroes, ...monsters.filter((monster) => revealedMonsterIds.includes(monster.id))].map(
     (unit) => unit.id,
   );
@@ -262,6 +265,7 @@ export const setupMapState = (campaign: CampaignState, mapIndex = campaign.curre
     diceTray: [],
     floatingText: [],
     visitedRoomIds: initialRoomId ? [initialRoomId] : [],
+    revealedTileKeys,
     revealedMonsterIds,
     roomNarration: initialRoomNarration,
     randomEncounterDeck: shuffle(randomEncounterCards.map((card) => card.id)),
@@ -280,10 +284,15 @@ export const currentMapDefinition = (mapState: MapState) => mapById[mapState.map
 export const mapWithDoors = (mapState: MapState) => {
   const map = currentMapDefinition(mapState);
   const visitedRoomIds = mapState.visitedRoomIds ?? [];
+  const revealedTileKeys = new Set(mapState.revealedTileKeys ?? []);
+  const hasExplicitTileReveal = Array.isArray(mapState.revealedTileKeys);
   return {
     ...map,
     tiles: map.tiles.map((tile) => {
-      const revealed = !tile.room || visitedRoomIds.includes(tile.room);
+      const key = `${tile.x},${tile.y}`;
+      const revealed =
+        tile.type !== "void" &&
+        (hasExplicitTileReveal ? revealedTileKeys.has(key) : !tile.room || visitedRoomIds.includes(tile.room));
       return tile.type === "door"
         ? { ...tile, open: mapState.doorsOpened.includes(`${tile.x},${tile.y}`), revealed }
         : { ...tile, revealed };

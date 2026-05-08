@@ -208,6 +208,27 @@ const nextRevealedInitiativeIndex = (
   return undefined;
 };
 
+const revealLineOfSightTiles = (mapState: MapState): MapState => {
+  const map = mapWithDoors(mapState);
+  const revealed = new Set(mapState.revealedTileKeys ?? []);
+  const livingHeroes = mapState.heroes.filter((hero) => !hero.defeated && !hero.downed);
+
+  livingHeroes.forEach((hero) => {
+    map.tiles.forEach((tile) => {
+      if (tile.type === "void") return;
+      if (hasLineOfSight(map, hero.position, { x: tile.x, y: tile.y })) {
+        revealed.add(posKey(tile));
+      }
+    });
+  });
+
+  if (revealed.size === (mapState.revealedTileKeys ?? []).length) return mapState;
+  return {
+    ...mapState,
+    revealedTileKeys: Array.from(revealed),
+  };
+};
+
 const revealVisibleMonsters = (mapState: MapState): MapState => {
   const map = mapWithDoors(mapState);
   const revealed = new Set(mapState.revealedMonsterIds ?? []);
@@ -226,6 +247,21 @@ const revealVisibleMonsters = (mapState: MapState): MapState => {
     ...mapState,
     revealedMonsterIds: Array.from(revealed),
   };
+
+  if (next.pendingInitiativeRoll) {
+    next = {
+      ...next,
+      pendingInitiativeRoll: {
+        ...next.pendingInitiativeRoll,
+        unitIds: Array.from(
+          new Set([
+            ...next.pendingInitiativeRoll.unitIds,
+            ...newlyVisible.map((monster) => monster.id),
+          ]),
+        ),
+      },
+    };
+  }
 
   if (!next.pendingInitiativeRoll && next.initiative.order.length) {
     const order = [...next.initiative.order];
@@ -268,6 +304,9 @@ const revealVisibleMonsters = (mapState: MapState): MapState => {
     "dm",
   );
 };
+
+const refreshLineOfSight = (mapState: MapState): MapState =>
+  revealVisibleMonsters(revealLineOfSightTiles(mapState));
 
 const updateUnit = (mapState: MapState, unit: Unit): MapState => ({
   ...mapState,
@@ -357,6 +396,12 @@ const normalizeStartingRoomVisibility = (mapState: MapState): MapState => {
   const startRoomId = startPosition ? map.tiles.find((tile) => samePos(tile, startPosition))?.room : undefined;
   const visitedRoomIds = mapState.visitedRoomIds ?? [];
   const needsStartReveal = Boolean(startRoomId && !visitedRoomIds.includes(startRoomId));
+  const existingRevealedTileKeys = mapState.revealedTileKeys ?? [];
+  const startingRoomTileKeys = startRoomId
+    ? map.tiles
+        .filter((tile) => tile.type !== "void" && tile.room === startRoomId)
+        .map((tile) => posKey(tile))
+    : [];
   const heroes = mapState.heroes.map((hero, index) => {
     const tile = map.tiles.find((candidate) => samePos(candidate, hero.position));
     const validPosition = tile && tile.type !== "wall" && tile.type !== "void";
@@ -372,6 +417,7 @@ const normalizeStartingRoomVisibility = (mapState: MapState): MapState => {
     ...mapState,
     heroes,
     visitedRoomIds: needsStartReveal && startRoomId ? Array.from(new Set([startRoomId, ...visitedRoomIds])) : visitedRoomIds,
+    revealedTileKeys: Array.from(new Set([...existingRevealedTileKeys, ...startingRoomTileKeys])),
     roomNarration: narration,
   };
 
@@ -393,6 +439,11 @@ const normalizeInitiativeState = (mapState: MapState): MapState => {
     noRevealedMonstersAtActivationStart: Boolean(mapState.noRevealedMonstersAtActivationStart),
     monsterDefeatedThisActivation: Boolean(mapState.monsterDefeatedThisActivation),
     monsterDefeatedThisRound: Boolean(mapState.monsterDefeatedThisRound),
+    revealedTileKeys: Array.isArray(mapState.revealedTileKeys)
+      ? mapState.revealedTileKeys
+      : currentMapDefinition(normalizedRoomsBase).tiles
+          .filter((tile) => tile.type !== "void" && (!tile.room || (normalizedRoomsBase.visitedRoomIds ?? []).includes(tile.room)))
+          .map((tile) => posKey(tile)),
     revealedMonsterIds: Array.isArray(mapState.revealedMonsterIds)
       ? mapState.revealedMonsterIds
       : normalizedRoomsBase.monsters
@@ -1254,7 +1305,7 @@ const moveUnitTo = (mapState: MapState, unit: Unit, position: Position, cost?: n
   const [withSpend, spent] = spendAndUpdate(mapState, moved, apCost);
   let next = updateUnit(withSpend, spent);
   next = enterRoomIfNeeded(next, spent, position);
-  next = revealVisibleMonsters(next);
+  next = refreshLineOfSight(next);
   return addFloat(
     addLog(
       next,
@@ -1338,6 +1389,7 @@ const resolveHeroCard = (
           updatedActor = { ...updatedActor, position: movePosition };
           next = updateUnit(next, updatedActor);
           next = enterRoomIfNeeded(next, updatedActor, movePosition);
+          next = refreshLineOfSight(next);
           next = addFloat(next, movePosition, "Rush", "ap");
         }
       }
@@ -1802,7 +1854,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const campaign = get().campaign;
     if (!campaign) return;
     const normalizedCampaign = normalizeCampaignForCurrentData(campaign);
-    const mapState = withActivationStartState(setupMapState(normalizedCampaign));
+    const mapState = withActivationStartState(refreshLineOfSight(setupMapState(normalizedCampaign)));
     saveSnapshot(normalizedCampaign, mapState, "tactical");
     set({ campaign: normalizedCampaign, mapState, screen: "tactical" });
   },
@@ -1904,7 +1956,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
               doorsOpened: Array.from(new Set([...next.doorsOpened, posKey(tile)])),
             };
             next = addLog(next, `${spent.name} opens ${tile.label ?? "a door"}.`, "hero");
-            next = revealVisibleMonsters(next);
+            next = refreshLineOfSight(next);
           }
           if (tile.type === "altar" && map.objective.type === "relicToExit") {
             next = {

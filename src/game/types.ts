@@ -484,6 +484,7 @@ export interface MapState {
   floatingText: FloatingText[];
   rollBanner?: RollBanner;
   visitedRoomIds: string[];
+  revealedTileKeys: string[];
   revealedMonsterIds: string[];
   roomNarration?: RoomNarration;
   randomEncounterDeck: string[];
