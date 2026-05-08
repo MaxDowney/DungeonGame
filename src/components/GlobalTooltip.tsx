@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface TooltipState {
   text: string;
@@ -13,8 +13,26 @@ const tooltipText = (target: EventTarget | null): string | null => {
 
 export function GlobalTooltip() {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const pendingTooltip = useRef<TooltipState | null>(null);
+  const showTimer = useRef<number | null>(null);
 
   useEffect(() => {
+    const clearShowTimer = () => {
+      if (showTimer.current) {
+        window.clearTimeout(showTimer.current);
+        showTimer.current = null;
+      }
+    };
+
+    const schedule = (state: TooltipState, delay = 420) => {
+      pendingTooltip.current = state;
+      clearShowTimer();
+      showTimer.current = window.setTimeout(() => {
+        if (pendingTooltip.current) setTooltip(pendingTooltip.current);
+        showTimer.current = null;
+      }, delay);
+    };
+
     const show = (event: PointerEvent | FocusEvent) => {
       const text = tooltipText(event.target);
       if (!text) return;
@@ -24,16 +42,22 @@ export function GlobalTooltip() {
             const element = event.target instanceof Element ? event.target.getBoundingClientRect() : null;
             return element ? { x: element.left + element.width / 2, y: element.top } : { x: 0, y: 0 };
           })();
-      setTooltip({ text, x: point.x, y: point.y });
+      schedule({ text, x: point.x, y: point.y }, "clientX" in event ? 420 : 180);
     };
 
     const move = (event: PointerEvent) => {
       const text = tooltipText(event.target);
       if (!text) return;
-      setTooltip({ text, x: event.clientX, y: event.clientY });
+      const next = { text, x: event.clientX, y: event.clientY };
+      pendingTooltip.current = next;
+      setTooltip((current) => (current ? next : current));
     };
 
-    const hide = () => setTooltip(null);
+    const hide = () => {
+      clearShowTimer();
+      pendingTooltip.current = null;
+      setTooltip(null);
+    };
 
     window.addEventListener("pointerover", show);
     window.addEventListener("pointermove", move);
@@ -46,6 +70,7 @@ export function GlobalTooltip() {
       window.removeEventListener("pointerout", hide);
       window.removeEventListener("focusin", show);
       window.removeEventListener("focusout", hide);
+      clearShowTimer();
     };
   }, []);
 
