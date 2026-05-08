@@ -354,6 +354,13 @@ export interface InitiativeEntry {
   total: number;
 }
 
+export interface PendingInitiativeRoll {
+  id: string;
+  round: number;
+  unitIds: string[];
+  rolled: InitiativeEntry[];
+}
+
 export interface GameLogEntry {
   id: string;
   round: number;
@@ -452,6 +459,7 @@ export interface MapState {
   actionTakenThisActivation: boolean;
   noRevealedMonstersAtActivationStart: boolean;
   monsterDefeatedThisActivation: boolean;
+  monsterDefeatedThisRound: boolean;
   heroes: Unit[];
   monsters: Unit[];
   doorsOpened: string[];
@@ -476,12 +484,14 @@ export interface MapState {
   floatingText: FloatingText[];
   rollBanner?: RollBanner;
   visitedRoomIds: string[];
+  revealedMonsterIds: string[];
   roomNarration?: RoomNarration;
   randomEncounterDeck: string[];
   randomEncounterDiscard: string[];
   activeRandomEncounter?: RandomEncounterReveal;
   pendingAttack?: PendingAttack;
   pendingDiceRoll?: PendingDiceRoll;
+  pendingInitiativeRoll?: PendingInitiativeRoll;
   resolved?: PendingRewards;
 }
 

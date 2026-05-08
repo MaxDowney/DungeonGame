@@ -14,7 +14,6 @@ import type {
   RoomNarration,
   Unit,
 } from "../types";
-import { rollInitiative } from "./initiative";
 
 const shuffle = <T,>(items: T[]): T[] => {
   const next = [...items];
@@ -197,30 +196,27 @@ export const setupMapState = (campaign: CampaignState, mapIndex = campaign.curre
   const hand = deck.slice(0, 3);
   const dmDeck = deck.slice(3);
   const doom = hasUpgrade(campaign, "deeper-darkness") ? 1 : 0;
-  const initiative = rollInitiative(heroes, monsters);
   const initialRoomId = map.tiles.find(
     (tile) => tile.x === map.heroStarts[0]?.x && tile.y === map.heroStarts[0]?.y,
   )?.room;
   const initialRoomNarration = roomNarrationFor(map, initialRoomId);
-  const isInitiallyAwake = (unit: Unit): boolean => {
-    if (unit.side === "heroes") return true;
+  const isInitiallyRevealedMonster = (unit: Unit): boolean => {
     const roomId = map.tiles.find((tile) => tile.x === unit.position.x && tile.y === unit.position.y)?.room;
     return !roomId || roomId === initialRoomId;
   };
-  const initialIndex = Math.max(
-    0,
-    initiative.order.findIndex((entry) => isInitiallyAwake([...heroes, ...monsters].find((unit) => unit.id === entry.unitId)!)),
+  const revealedMonsterIds = monsters.filter(isInitiallyRevealedMonster).map((monster) => monster.id);
+  const initialInitiativeUnitIds = [...heroes, ...monsters.filter((monster) => revealedMonsterIds.includes(monster.id))].map(
+    (unit) => unit.id,
   );
-  const activeUnitId = initiative.order[initialIndex]?.unitId ?? null;
 
   return {
     mapId: map.id,
     round: 1,
     doom,
     escalation: 0,
-    initiative: { ...initiative, currentIndex: initialIndex },
-    activeUnitId,
-    selectedUnitId: activeUnitId,
+    initiative: { order: [], currentIndex: -1 },
+    activeUnitId: null,
+    selectedUnitId: null,
     selectedCardId: null,
     selectedMonsterActionId: null,
     selectedDmCardId: null,
@@ -228,6 +224,7 @@ export const setupMapState = (campaign: CampaignState, mapIndex = campaign.curre
     actionTakenThisActivation: false,
     noRevealedMonstersAtActivationStart: false,
     monsterDefeatedThisActivation: false,
+    monsterDefeatedThisRound: false,
     heroes,
     monsters,
     doorsOpened: map.tiles.filter((tile) => tile.type === "door" && tile.open).map((tile) => `${tile.x},${tile.y}`),
@@ -258,18 +255,23 @@ export const setupMapState = (campaign: CampaignState, mapIndex = campaign.curre
       {
         id: crypto.randomUUID(),
         round: 1,
-        text: `${map.name} begins. Initiative order: ${initiative.order
-          .map((entry) => `${entry.unitName} ${entry.total}`)
-          .join(", ")}.`,
+        text: `${map.name} begins. Roll initiative for each revealed figure.`,
         tone: "system",
       },
     ],
     diceTray: [],
     floatingText: [],
     visitedRoomIds: initialRoomId ? [initialRoomId] : [],
+    revealedMonsterIds,
     roomNarration: initialRoomNarration,
     randomEncounterDeck: shuffle(randomEncounterCards.map((card) => card.id)),
     randomEncounterDiscard: [],
+    pendingInitiativeRoll: {
+      id: crypto.randomUUID(),
+      round: 1,
+      unitIds: initialInitiativeUnitIds,
+      rolled: [],
+    },
   };
 };
 

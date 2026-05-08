@@ -83,14 +83,18 @@ export function TacticalBoard() {
 
   const unitForTile = (position: Position): Unit | undefined => {
     const tile = tileForPosition(position);
-    if (!tile?.revealed || !canShowTileSurface(tile)) return undefined;
-    return units.find((unit) => !unit.defeated && samePos(unit.position, position));
+    if (!tile || !canShowTileSurface(tile)) return undefined;
+    return units.find((unit) => {
+      const isRevealedMonster = unit.side === "dm" && mapState?.revealedMonsterIds?.includes(unit.id);
+      return !unit.defeated && samePos(unit.position, position) && (unit.side === "heroes" || tile?.revealed || isRevealedMonster);
+    });
   };
 
   const tethers = mapState?.monsters
     .filter((monster) => {
       const tile = tileForPosition(monster.position);
-      return !monster.defeated && tile?.revealed && monster.agro?.currentTargetId;
+      const isRevealedMonster = mapState.revealedMonsterIds?.includes(monster.id);
+      return !monster.defeated && (tile?.revealed || isRevealedMonster) && monster.agro?.currentTargetId;
     })
     .map((monster) => {
       const target = mapState.heroes.find((hero) => hero.id === monster.agro?.currentTargetId);

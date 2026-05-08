@@ -74,6 +74,15 @@ function UnitPanel() {
   const target = selected.side === "dm" && selected.agro
     ? mapState?.heroes.find((hero) => hero.id === selected.agro?.currentTargetId)
     : undefined;
+  const map = mapState ? selectCurrentMap(mapState) : undefined;
+  const targetingMonsters = selected.side === "heroes" && mapState && map
+    ? mapState.monsters.filter((monster) => {
+        const tile = map.tiles.find((candidate) => candidate.x === monster.position.x && candidate.y === monster.position.y);
+        const revealed = tile?.revealed || mapState.revealedMonsterIds?.includes(monster.id);
+        return !monster.defeated && revealed && monster.agro?.currentTargetId === selected.id;
+      })
+    : [];
+  const pressureLabel = selected.agro?.pressure === 3 ? "Locked" : selected.agro?.pressure === 2 ? "Firm" : selected.agro?.pressure === 1 ? "Loose" : "Searching";
   return (
     <aside className={`panel tactical-panel p-4 ${isActive ? "active-unit-panel" : ""}`}>
       <div className="flex items-start justify-between gap-3">
@@ -113,11 +122,21 @@ function UnitPanel() {
             <div data-tooltip={tip.currentTarget}>
               <span>Current Target</span>
               <strong>{target?.name ?? "Nearest visible hero"}</strong>
+              <small>{pressureLabel} threat focus</small>
             </div>
             <div className="pressure-pips" title="Pressure" data-tooltip={tip.pressure}>
               {Array.from({ length: 3 }).map((_, index) => (
                 <i key={index} className={index < selected.agro!.pressure ? "lit" : ""} />
               ))}
+            </div>
+          </div>
+        )}
+        {selected.side === "heroes" && targetingMonsters.length > 0 && (
+          <div className="agro-panel hero-threat-panel" data-tooltip="These revealed monsters currently have this hero as their Current Target. Pressure pips show how hard they are locked on.">
+            <div>
+              <span>Targeted By</span>
+              <strong>{targetingMonsters.map((monster) => monster.name).join(", ")}</strong>
+              <small>Red tethers on the board show each threat line.</small>
             </div>
           </div>
         )}
@@ -131,6 +150,7 @@ function InitiativeBar({ onInspect }: { onInspect: (unitId: string) => void }) {
   if (!mapState) return null;
   const units = [...mapState.heroes, ...mapState.monsters];
   const map = selectCurrentMap(mapState);
+  const pending = mapState.pendingInitiativeRoll;
 
   return (
     <div className="initiative-bar panel">
@@ -139,13 +159,32 @@ function InitiativeBar({ onInspect }: { onInspect: (unitId: string) => void }) {
         <strong>Initiative</strong>
       </div>
       <div className="initiative-track">
-        {mapState.initiative.order.map((entry, index) => {
+        {pending ? pending.unitIds.map((unitId, index) => {
+          const unit = units.find((candidate) => candidate.id === unitId);
+          const rolled = pending.rolled.find((entry) => entry.unitId === unitId);
+          const current = index === pending.rolled.length;
+          if (!unit) return null;
+          return (
+            <button
+              type="button"
+              key={`${unitId}-${index}`}
+              onClick={() => onInspect(unit.id)}
+              className={`initiative-entry pending ${unit.side} ${rolled ? "played" : ""} ${current ? "current" : ""}`}
+              title={rolled ? `${rolled.unitName}: d10 ${rolled.roll} + initiative ${rolled.bonus} = ${rolled.total}` : `${unit.name}: waiting for initiative roll`}
+              data-tooltip={rolled ? `${rolled.unitName}: initiative total ${rolled.total} from d10 ${rolled.roll} + ${rolled.bonus}.` : `${unit.name}: click Roll Initiative in the dice overlay.`}
+            >
+              <span className="initiative-entry__roll">{rolled?.total ?? "d10"}</span>
+              <span className="initiative-entry__name">{unit.name.split(" ")[0]}</span>
+              <small>{rolled ? "Rolled" : current ? "Rolling" : "Waiting"}</small>
+            </button>
+          );
+        }) : mapState.initiative.order.map((entry, index) => {
           const unit = units.find((candidate) => candidate.id === entry.unitId);
           const played = Boolean(unit?.activated);
           const current = mapState.activeUnitId === entry.unitId;
           const removed = Boolean(unit?.defeated || unit?.downed);
           const tile = unit ? map.tiles.find((candidate) => candidate.x === unit.position.x && candidate.y === unit.position.y) : undefined;
-          const revealed = Boolean(unit?.side === "heroes" || tile?.revealed);
+          const revealed = Boolean(unit?.side === "heroes" || tile?.revealed || (unit && mapState.revealedMonsterIds?.includes(unit.id)));
           return (
             <button
               type="button"
@@ -186,7 +225,7 @@ function BottomPanel() {
         <div className="activation-strip">
           <span>No active figure</span>
           <p className="max-w-md text-sm text-stone-400">
-            The round has no ready figures. End activation will advance once a figure is active.
+            Roll initiative in the dice overlay to fix the next activation order.
           </p>
         </div>
       </div>
@@ -398,7 +437,7 @@ function RightPanel() {
       </div>
       <div
         className="encounter-watch"
-        data-tooltip="Random Encounter: after a hero activation with no revealed monsters from start to finish, draw from this 50-card deck. No draw happens on a turn where a hero defeated a monster."
+        data-tooltip="Random Encounter: checked only at round end, before initiative is rolled again. Draw if no revealed monsters remain and no monster was defeated during that round."
       >
         <span>Encounter Deck</span>
         <strong>{mapState.randomEncounterDeck.length}</strong>
@@ -464,8 +503,10 @@ function ManualDiceOverlay() {
   const rollPendingHit = useGameStore((state) => state.rollPendingHit);
   const rollPendingDamage = useGameStore((state) => state.rollPendingDamage);
   const rollPendingUtilityDice = useGameStore((state) => state.rollPendingUtilityDice);
+  const rollPendingInitiative = useGameStore((state) => state.rollPendingInitiative);
   const pending = mapState?.pendingAttack;
   const pendingDice = mapState?.pendingDiceRoll;
+  const pendingInitiative = mapState?.pendingInitiativeRoll;
   const [rolling, setRolling] = useState(false);
   const rollWithBounce = (resolve: () => void) => {
     if (rolling) return;
@@ -475,8 +516,51 @@ function ManualDiceOverlay() {
       setRolling(false);
     }, 950);
   };
-  if (!mapState || (!pending && !pendingDice)) return null;
+  if (!mapState || (!pending && !pendingDice && !pendingInitiative)) return null;
   const units = [...mapState.heroes, ...mapState.monsters];
+  if (pendingInitiative) {
+    const currentUnitId = pendingInitiative.unitIds[pendingInitiative.rolled.length];
+    const currentUnit = units.find((unit) => unit.id === currentUnitId);
+    const rolledCount = pendingInitiative.rolled.length;
+    const totalCount = pendingInitiative.unitIds.length;
+    return (
+      <motion.div
+        className="manual-dice-overlay"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 12 }}
+      >
+        <div className="manual-dice-panel initiative-dice-panel">
+          <div>
+            <div className="eyebrow">Round {pendingInitiative.round} Initiative</div>
+            <h3 className="font-display text-2xl font-bold text-amber-100">
+              {currentUnit ? `${currentUnit.name} rolls initiative` : "Initiative Complete"}
+            </h3>
+            <p className="mt-1 text-sm text-stone-300">
+              Roll d10 + Initiative for every revealed figure. The order stays fixed for the round.
+            </p>
+          </div>
+          <Dice3D dice={["d10"]} value={rolling ? "..." : "d10"} rolling={rolling} />
+          <div className="manual-dice-details">
+            <div>
+              {currentUnit ? `d10 + Initiative ${currentUnit.initiative >= 0 ? "+" : ""}${currentUnit.initiative}` : "All revealed figures have rolled."}
+            </div>
+            <div>
+              {rolledCount}/{totalCount} initiative rolls complete.
+            </div>
+            {pendingInitiative.rolled.length > 0 && (
+              <div className="initiative-roll-summary">
+                {pendingInitiative.rolled.map((entry) => `${entry.unitName} ${entry.total}`).join(" · ")}
+              </div>
+            )}
+            <button className="primary-button compact" onClick={() => rollWithBounce(rollPendingInitiative)} disabled={rolling || !currentUnit}>
+              {rolling ? "Rolling..." : currentUnit ? "Roll Initiative" : "Set Order"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
   if (pendingDice) {
     const targets = pendingDice.targetIds
       .map((id) => units.find((unit) => unit.id === id)?.name)
