@@ -91,6 +91,7 @@ interface GameStore {
   rollPendingDamage: () => void;
   rollPendingUtilityDice: () => void;
   defendActive: () => void;
+  restActive: () => void;
   endActivation: () => void;
   resolveCurrentMap: () => void;
   selectRewardCard: (heroId: string, cardId: string) => void;
@@ -1739,18 +1740,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
           next = addFloat(next, updated.position, `+${hp - before}`, "heal");
           next = addRollBanner(next, `+${hp - before} HP`, pending.label, "heal");
           next = addLog(next, `${pending.label} restores ${hp - before} HP to ${updated.name}.`, "heal");
-        } else {
+        } else if (pending.kind === "defense") {
           const updated = { ...target, defending: (target.defending ?? 0) + roll.total };
           next = updateUnit(next, updated);
           next = addFloat(next, updated.position, `Guard ${roll.total}`, "ap");
           next = addRollBanner(next, `GUARD ${roll.total}`, pending.label, "damage");
           next = addLog(next, `${pending.label} adds ${roll.total} damage reduction to ${updated.name}.`, "system");
+        } else if (pending.kind === "rest") {
+          const before = target.ap;
+          const ap = Math.min(target.maxAp, target.ap + roll.total);
+          const updated = { ...target, ap };
+          next = updateUnit(next, updated);
+          next = addFloat(next, updated.position, `+${ap - before} AP`, "ap");
+          next = addRollBanner(next, `REST +${ap - before} AP`, `Recovery ${target.recovery} + d3 ${roll.dice[0]?.result ?? 0}`, "heal");
+          next = addLog(
+            next,
+            `${updated.name} rests and recovers ${ap - before} AP (${target.recovery} Recovery + d3 ${roll.dice[0]?.result ?? 0}).`,
+            updated.side === "heroes" ? "hero" : "dm",
+          );
         }
       });
 
       next = applySupportAgro(next, actor, pending.agro);
       next = { ...next, pendingDiceRoll: undefined };
-      next = autoEndActivationIfSpent(next, state.campaign, pending.actorId);
+      next = pending.kind === "rest"
+        ? advanceActivation(next, state.campaign)
+        : autoEndActivationIfSpent(next, state.campaign, pending.actorId);
       saveSnapshot(state.campaign, next, state.screen);
       return { mapState: next };
     }),
@@ -1778,6 +1793,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
       next = addFloat(addLog(next, `${spent.name} defends.`, spent.side === "heroes" ? "hero" : "dm"), spent.position, "Guard", "ap");
       next = autoEndActivationIfSpent(next, state.campaign, spent.id);
+      saveSnapshot(state.campaign, next, state.screen);
+      return { mapState: next };
+    }),
+
+  restActive: () =>
+    set((state) => {
+      const mapState = state.mapState;
+      const active = mapState ? getActiveUnit(mapState) : undefined;
+      if (!mapState || !active || active.defeated || active.downed || mapState.pendingAttack || mapState.pendingDiceRoll) return state;
+      const next = beginPendingDiceRoll(
+        addLog(mapState, `${active.name} rests, giving up the rest of the activation.`, active.side === "heroes" ? "hero" : "dm"),
+        {
+          kind: "rest",
+          label: `${active.name} Rest`,
+          dice: ["d3"],
+          flat: active.recovery,
+          actorId: active.id,
+          targetIds: [active.id],
+        },
+      );
       saveSnapshot(state.campaign, next, state.screen);
       return { mapState: next };
     }),

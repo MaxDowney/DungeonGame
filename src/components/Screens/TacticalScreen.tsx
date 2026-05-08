@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   ArrowRight,
   DoorOpen,
@@ -102,7 +102,7 @@ function UnitPanel() {
   );
 }
 
-function InitiativeBar() {
+function InitiativeBar({ onInspect }: { onInspect: (unitId: string) => void }) {
   const mapState = useGameStore((state) => state.mapState);
   if (!mapState) return null;
   const units = [...mapState.heroes, ...mapState.monsters];
@@ -123,15 +123,18 @@ function InitiativeBar() {
           const tile = unit ? map.tiles.find((candidate) => candidate.x === unit.position.x && candidate.y === unit.position.y) : undefined;
           const revealed = Boolean(unit?.side === "heroes" || tile?.revealed);
           return (
-            <div
+            <button
+              type="button"
               key={`${entry.unitId}-${index}`}
+              disabled={!unit || !revealed}
+              onClick={() => unit && revealed && onInspect(unit.id)}
               className={`initiative-entry ${entry.side} ${played ? "played" : ""} ${current ? "current" : ""} ${removed ? "removed" : ""} ${!revealed ? "hidden" : ""}`}
               title={revealed ? `${entry.unitName}: d10 ${entry.roll} + initiative ${entry.bonus} = ${entry.total}` : "Unrevealed dungeon threat"}
             >
               <span className="initiative-entry__roll">{entry.total}</span>
               <span className="initiative-entry__name">{revealed ? entry.unitName.split(" ")[0] : "Threat"}</span>
               <small>{removed ? "Out" : !revealed ? "Hidden" : played ? "Played" : current ? "Active" : "Ready"}</small>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -149,6 +152,7 @@ function BottomPanel() {
   const playSelectedCardOnActive = useGameStore((state) => state.playSelectedCardOnActive);
   const playSelectedMonsterAction = useGameStore((state) => state.playSelectedMonsterAction);
   const defendActive = useGameStore((state) => state.defendActive);
+  const restActive = useGameStore((state) => state.restActive);
   const endActivation = useGameStore((state) => state.endActivation);
 
   if (!active || !mapState) {
@@ -232,6 +236,14 @@ function BottomPanel() {
               </span>
               <span className="action-button__cost">1 AP</span>
             </button>
+            <button className="action-button rest-action" onClick={restActive}>
+              <span className="action-button__icon"><Hourglass size={16} /></span>
+              <span className="action-button__copy">
+                <strong>Rest</strong>
+                <small>Skip turn, recover</small>
+              </span>
+              <span className="action-button__cost">Recovery + d3</span>
+            </button>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-3">
             {heroProgress?.handCardIds.map((cardId) => {
@@ -256,6 +268,16 @@ function BottomPanel() {
         </div>
       ) : (
         <div className="grid gap-3">
+          <div className="universal-actions monster-rest-actions">
+            <button className="action-button rest-action" onClick={restActive}>
+              <span className="action-button__icon"><Hourglass size={16} /></span>
+              <span className="action-button__copy">
+                <strong>Rest</strong>
+                <small>Skip turn, recover</small>
+              </span>
+              <span className="action-button__cost">Recovery + d3</span>
+            </button>
+          </div>
           <div className="flex gap-3 overflow-x-auto pb-3">
             {monsterActions.map((action) => (
               <MonsterActionCard
@@ -425,7 +447,13 @@ function ManualDiceOverlay() {
               Roll {pendingDice.dice.join(" + ")}
               {pendingDice.flat ? ` + ${pendingDice.flat}` : ""}
             </div>
-            <div>{pendingDice.kind === "heal" ? "Healing resolves after the roll." : "Reduction is banked against incoming damage."}</div>
+            <div>
+              {pendingDice.kind === "heal"
+                ? "Healing resolves after the roll."
+                : pendingDice.kind === "rest"
+                  ? "Rest recovers AP, then the activation ends."
+                  : "Reduction is banked against incoming damage."}
+            </div>
             <button className="primary-button compact" onClick={() => rollWithBounce(rollPendingUtilityDice)} disabled={rolling}>
               {rolling ? "Rolling..." : "Roll Dice"}
             </button>
@@ -574,6 +602,100 @@ function RoomNarrationOverlay() {
   );
 }
 
+function UnitInspectOverlay({
+  unit,
+  onClose,
+}: {
+  unit: Unit | undefined;
+  onClose: () => void;
+}) {
+  const mapState = useGameStore((state) => state.mapState);
+  if (!unit || !mapState) return null;
+  const target = unit.side === "dm" && unit.agro?.currentTargetId
+    ? mapState.heroes.find((hero) => hero.id === unit.agro?.currentTargetId)
+    : undefined;
+  const monsterActions = unit.side === "dm" ? monsterTemplateById[unit.templateId]?.actions ?? [] : [];
+
+  return (
+    <motion.div
+      className="unit-inspect-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <button className="unit-inspect-scrim" onClick={onClose} title="Close unit card" />
+      <motion.article
+        className={`unit-inspect-card ${unit.side}`}
+        initial={{ y: 28, scale: 0.92, rotateX: -8 }}
+        animate={{ y: 0, scale: 1, rotateX: 0 }}
+        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+      >
+        <div className="unit-inspect-portrait" style={{ "--unit-color": unit.color } as CSSProperties}>
+          <span>{unit.portraitGlyph}</span>
+        </div>
+        <div className="unit-inspect-heading">
+          <div>
+            <div className="eyebrow">{unit.side === "heroes" ? unit.role : unit.family}</div>
+            <h3>{unit.name}</h3>
+          </div>
+          <button className="secondary-button compact" onClick={onClose}>Close</button>
+        </div>
+        <HealthBar unit={unit} />
+        <div className="unit-inspect-vitals">
+          <span><Heart size={15} /> {unit.hp}/{unit.maxHp} HP</span>
+          <span><Zap size={15} /> {unit.ap}/{unit.maxAp} AP</span>
+          <span><Gem size={15} /> Level {unit.level}</span>
+        </div>
+        <div className="unit-inspect-stats">
+          <span>Recovery <strong>{unit.recovery}</strong></span>
+          <span>Speed <strong>{unit.speed}</strong></span>
+          <span>DT <strong>{unit.dt}</strong></span>
+          <span>Defence <strong>{unit.defense + (unit.tempDefense ?? 0)}</strong></span>
+          <span>Initiative <strong>{unit.initiative >= 0 ? `+${unit.initiative}` : unit.initiative}</strong></span>
+          <span>Accuracy <strong>{unit.accuracy >= 0 ? `+${unit.accuracy}` : unit.accuracy}</strong></span>
+          <span>Power <strong>{unit.power}</strong></span>
+          <span>Position <strong>{unit.position.x + 1},{unit.position.y + 1}</strong></span>
+        </div>
+        {unit.weapon && (
+          <div className="unit-inspect-section">
+            <strong>Weapon</strong>
+            <span>{unit.weapon.name}: {unit.weapon.die}, Range {unit.weapon.range}</span>
+          </div>
+        )}
+        {unit.conditions.length > 0 && (
+          <div className="unit-inspect-tags">
+            {unit.conditions.map((condition) => (
+              <span key={condition.type}>{condition.type} {condition.duration}</span>
+            ))}
+          </div>
+        )}
+        {unit.side === "dm" && unit.agro && (
+          <div className="unit-inspect-section">
+            <strong>Threat</strong>
+            <span>Current Target: {target?.name ?? "Nearest visible hero"}</span>
+            <div className="pressure-pips" title="Pressure">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <i key={index} className={index < unit.agro!.pressure ? "lit" : ""} />
+              ))}
+            </div>
+          </div>
+        )}
+        {monsterActions.length > 0 && (
+          <div className="unit-inspect-actions">
+            {monsterActions.map((action) => (
+              <div key={action.id}>
+                <strong>{action.name}</strong>
+                <span>{action.cost} AP, R{action.range}</span>
+                <p>{action.text}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.article>
+    </motion.div>
+  );
+}
+
 function TurnSplashOverlay() {
   const mapState = useGameStore((state) => state.mapState);
   const [visibleKey, setVisibleKey] = useState<string | null>(null);
@@ -615,9 +737,13 @@ function TurnSplashOverlay() {
 export function TacticalScreen() {
   const mapState = useGameStore((state) => state.mapState);
   const setScreen = useGameStore((state) => state.setScreen);
+  const [inspectedUnitId, setInspectedUnitId] = useState<string | null>(null);
   const map = mapState ? selectCurrentMap(mapState) : undefined;
 
   if (!mapState || !map) return null;
+  const inspectedUnit = inspectedUnitId
+    ? [...mapState.heroes, ...mapState.monsters].find((unit) => unit.id === inspectedUnitId)
+    : undefined;
 
   return (
     <section className="tactical-shell h-full p-4">
@@ -630,7 +756,7 @@ export function TacticalScreen() {
           Campaign
         </button>
       </div>
-      <InitiativeBar />
+      <InitiativeBar onInspect={setInspectedUnitId} />
       <div className="relative mt-3 grid h-[calc(100%-10rem)] gap-4 xl:grid-cols-[19rem_1fr_22rem]">
         <UnitPanel />
         <div className="relative grid min-h-0 grid-rows-[1fr_auto] gap-4">
@@ -645,6 +771,7 @@ export function TacticalScreen() {
       <ManualDiceOverlay />
       <ResultBurst />
       <TurnSplashOverlay />
+      <UnitInspectOverlay unit={inspectedUnit} onClose={() => setInspectedUnitId(null)} />
       <RoomNarrationOverlay />
     </section>
   );

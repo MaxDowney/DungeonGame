@@ -1,7 +1,7 @@
 import type { DiceExpression, DiceRoll } from "../types";
 
 export const parseDice = (expression: DiceExpression): Array<{ sides: number }> => {
-  const match = expression.match(/^(\d*)d(4|6|8|10|12|20)$/);
+  const match = expression.match(/^(\d*)d(3|4|6|8|10|12|20)$/);
   if (!match) return [];
   const count = Number(match[1] || 1);
   const sides = Number(match[2]);

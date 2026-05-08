@@ -11,6 +11,8 @@ const expressionSides = (dice: DiceExpression[]): number => {
 
 const geometryFor = (sides: number) => {
   switch (sides) {
+    case 3:
+      return new THREE.ConeGeometry(1.15, 1.7, 3, 1);
     case 4:
       return new THREE.TetrahedronGeometry(1.25, 0);
     case 8:

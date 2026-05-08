@@ -43,8 +43,8 @@ export type ConditionType =
   | "Exposed";
 
 export type DiceExpression =
-  | `${number}d${4 | 6 | 8 | 10 | 12 | 20}`
-  | `d${4 | 6 | 8 | 10 | 12 | 20}`;
+  | `${number}d${3 | 4 | 6 | 8 | 10 | 12 | 20}`
+  | `d${3 | 4 | 6 | 8 | 10 | 12 | 20}`;
 
 export interface Position {
   x: number;
@@ -394,7 +394,7 @@ export interface PendingAttack {
 
 export interface PendingDiceRoll {
   id: string;
-  kind: "heal" | "defense";
+  kind: "heal" | "defense" | "rest";
   label: string;
   dice: DiceExpression[];
   flat: number;
