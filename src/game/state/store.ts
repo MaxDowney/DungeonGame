@@ -96,6 +96,7 @@ interface GameStore {
   rollPendingInitiative: () => void;
   defendActive: () => void;
   restActive: () => void;
+  waitActive: () => void;
   endActivation: () => void;
   resolveCurrentMap: () => void;
   selectRewardCard: (heroId: string, cardId: string) => void;
@@ -1160,6 +1161,65 @@ const advanceActivation = (mapState: MapState, campaign: CampaignState | null): 
     pendingAttack: undefined,
     pendingDiceRoll: undefined,
   }, activeUnitId);
+};
+
+const waitActiveUnit = (mapState: MapState): MapState => {
+  if (
+    !mapState.activeUnitId ||
+    mapState.pendingAttack ||
+    mapState.pendingDiceRoll ||
+    mapState.pendingInitiativeRoll ||
+    mapState.resolved
+  ) {
+    return mapState;
+  }
+
+  const active = getActiveUnit(mapState);
+  if (!active || active.activated || active.defeated || active.downed) return mapState;
+
+  const currentIndex = mapState.initiative.order.findIndex((entry) => entry.unitId === active.id);
+  if (currentIndex < 0) return mapState;
+
+  const nextReadyIndex = nextRevealedInitiativeIndex(mapState, currentIndex + 1);
+  if (nextReadyIndex === undefined) {
+    return addLog(mapState, `${active.name} is already the last ready figure in the initiative order.`, "system");
+  }
+
+  const order = [...mapState.initiative.order];
+  const [entry] = order.splice(currentIndex, 1);
+  order.push(entry);
+
+  const shifted: MapState = {
+    ...mapState,
+    initiative: { ...mapState.initiative, order, currentIndex: currentIndex - 1 },
+    activeUnitId: null,
+    selectedUnitId: null,
+    selectedCardId: null,
+    selectedMonsterActionId: null,
+    selectedDmCardId: null,
+    actionMode: "select",
+  };
+  const nextIndex = nextRevealedInitiativeIndex(shifted, currentIndex);
+  const activeUnitId = nextIndex === undefined ? null : order[nextIndex]?.unitId ?? null;
+
+  return addFloat(
+    withActivationStartState(
+      addLog(
+        {
+          ...shifted,
+          initiative: { ...shifted.initiative, currentIndex: nextIndex ?? shifted.initiative.currentIndex },
+          activeUnitId,
+          selectedUnitId: activeUnitId,
+        },
+        `${active.name} waits, keeping all AP and sliding to the end of the initiative order.`,
+        active.side === "heroes" ? "hero" : "dm",
+      ),
+      activeUnitId,
+    ),
+    active.position,
+    "Wait",
+    "ap",
+  );
 };
 
 const autoEndActivationIfSpent = (
@@ -2303,6 +2363,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
           targetIds: [active.id],
         },
       );
+      saveSnapshot(state.campaign, next, state.screen);
+      return { mapState: next };
+    }),
+
+  waitActive: () =>
+    set((state) => {
+      const mapState = state.mapState;
+      if (!mapState?.activeUnitId) return state;
+      const next = waitActiveUnit(mapState);
       saveSnapshot(state.campaign, next, state.screen);
       return { mapState: next };
     }),

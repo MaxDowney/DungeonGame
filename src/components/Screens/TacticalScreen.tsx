@@ -217,6 +217,7 @@ function BottomPanel() {
   const playSelectedMonsterAction = useGameStore((state) => state.playSelectedMonsterAction);
   const defendActive = useGameStore((state) => state.defendActive);
   const restActive = useGameStore((state) => state.restActive);
+  const waitActive = useGameStore((state) => state.waitActive);
   const endActivation = useGameStore((state) => state.endActivation);
 
   if (!active || !mapState) {
@@ -238,6 +239,19 @@ function BottomPanel() {
   const selectedAction = mapState.selectedMonsterActionId
     ? monsterActions.find((action) => action.id === mapState.selectedMonsterActionId)
     : undefined;
+  const tacticalMap = selectCurrentMap(mapState);
+  const units = [...mapState.heroes, ...mapState.monsters];
+  const currentInitiativeIndex = mapState.initiative.order.findIndex((entry) => entry.unitId === active.id);
+  const hasLaterReadyFigure = mapState.initiative.order.slice(currentInitiativeIndex + 1).some((entry) => {
+    const unit = units.find((candidate) => candidate.id === entry.unitId);
+    const tile = unit ? tacticalMap.tiles.find((candidate) => candidate.x === unit.position.x && candidate.y === unit.position.y) : undefined;
+    const revealed = Boolean(unit?.side === "heroes" || tile?.revealed || (unit && mapState.revealedMonsterIds?.includes(unit.id)));
+    return Boolean(unit && revealed && !unit.activated && !unit.defeated && !unit.downed);
+  });
+  const waitDisabled = Boolean(mapState.pendingAttack || mapState.pendingDiceRoll || mapState.pendingInitiativeRoll || !hasLaterReadyFigure);
+  const waitTooltip = hasLaterReadyFigure
+    ? "Wait: costs 0 AP. Keep all current AP, move this figure to the end of the current initiative order, and pass to the next ready figure."
+    : "Wait: unavailable because there is no later ready figure to pass to.";
   const restDisabled = Boolean(mapState.actionTakenThisActivation || mapState.pendingAttack || mapState.pendingDiceRoll);
   const restTooltip = mapState.actionTakenThisActivation
     ? `Rest: unavailable because ${active.name} has already taken an action this activation.`
@@ -322,6 +336,21 @@ function BottomPanel() {
               </span>
               <span className="action-button__cost">Recovery + d3</span>
             </button>
+            <button
+              className={`action-button wait-action ${waitDisabled ? "is-disabled" : ""}`}
+              onClick={() => {
+                if (!waitDisabled) waitActive();
+              }}
+              aria-disabled={waitDisabled}
+              data-tooltip={waitTooltip}
+            >
+              <span className="action-button__icon"><ArrowRight size={16} /></span>
+              <span className="action-button__copy">
+                <strong>Wait</strong>
+                <small>Delay initiative</small>
+              </span>
+              <span className="action-button__cost">0 AP</span>
+            </button>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-3">
             {heroProgress?.handCardIds.map((cardId) => {
@@ -347,6 +376,21 @@ function BottomPanel() {
       ) : (
         <div className="grid gap-3">
           <div className="universal-actions monster-rest-actions">
+            <button
+              className={`action-button wait-action ${waitDisabled ? "is-disabled" : ""}`}
+              onClick={() => {
+                if (!waitDisabled) waitActive();
+              }}
+              aria-disabled={waitDisabled}
+              data-tooltip={waitTooltip}
+            >
+              <span className="action-button__icon"><ArrowRight size={16} /></span>
+              <span className="action-button__copy">
+                <strong>Wait</strong>
+                <small>Delay initiative</small>
+              </span>
+              <span className="action-button__cost">0 AP</span>
+            </button>
             <button
               className={`action-button rest-action ${restDisabled ? "is-disabled" : ""}`}
               onClick={() => {

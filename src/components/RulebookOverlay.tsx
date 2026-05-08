@@ -27,7 +27,7 @@ const ruleSections = [
   {
     title: "Activations",
     text:
-      "On a figure's activation, spend AP to move, attack, defend, interact, play cards, or use monster actions. A figure may take multiple actions while it has AP. When AP reaches 0, activation ends automatically. A player may also end activation early. Each figure activates once per round.",
+      "On a figure's activation, spend AP to move, attack, defend, interact, play cards, or use monster actions. A figure may take multiple actions while it has AP. When AP reaches 0, activation ends automatically. A player may also end activation early. Instead of acting now, a figure may Wait to keep all AP and move to the end of the current initiative order.",
   },
   {
     title: "AP And Rest",
