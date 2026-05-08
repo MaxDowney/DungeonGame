@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   DoorOpen,
@@ -574,6 +574,44 @@ function RoomNarrationOverlay() {
   );
 }
 
+function TurnSplashOverlay() {
+  const mapState = useGameStore((state) => state.mapState);
+  const [visibleKey, setVisibleKey] = useState<string | null>(null);
+  const active = mapState ? selectActiveUnit(mapState) : undefined;
+  const currentKey = active ? `${mapState?.round}-${active.id}` : null;
+
+  useEffect(() => {
+    if (!currentKey) return;
+    setVisibleKey(currentKey);
+    const timer = window.setTimeout(() => setVisibleKey(null), 1650);
+    return () => window.clearTimeout(timer);
+  }, [currentKey]);
+
+  if (!mapState || !active || visibleKey !== currentKey) return null;
+
+  const currentIndex = mapState.initiative.currentIndex + 1;
+  const total = mapState.initiative.order.length;
+  const sideLabel = active.side === "heroes" ? "Hero Turn" : "Dungeon Turn";
+
+  return (
+    <motion.div
+      key={currentKey}
+      className={`turn-splash-overlay ${active.side}`}
+      initial={{ opacity: 0, scale: 0.9, y: 22 }}
+      animate={{ opacity: [0, 1, 1, 0], scale: [0.9, 1.04, 1, 1.02], y: [22, 0, 0, -18] }}
+      transition={{ duration: 1.55, ease: "easeOut" }}
+    >
+      <div className="turn-splash-flare" />
+      <div className="turn-splash-kicker">
+        <span>{sideLabel}</span>
+        <i>Order {currentIndex}/{total}</i>
+      </div>
+      <strong>{active.name}</strong>
+      <small>{active.ap}/{active.maxAp} AP ready</small>
+    </motion.div>
+  );
+}
+
 export function TacticalScreen() {
   const mapState = useGameStore((state) => state.mapState);
   const setScreen = useGameStore((state) => state.setScreen);
@@ -606,6 +644,7 @@ export function TacticalScreen() {
       <DebugPanel />
       <ManualDiceOverlay />
       <ResultBurst />
+      <TurnSplashOverlay />
       <RoomNarrationOverlay />
     </section>
   );

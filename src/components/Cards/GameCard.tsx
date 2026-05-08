@@ -58,8 +58,9 @@ export function HeroGameCard({
           classFrame[card.classId]
         } ${selected ? "ring-2 ring-ember shadow-glow" : ""} ${disabled ? "opacity-45 grayscale" : ""}`}
       >
-        <div className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full border border-amber-200/60 bg-black/55 text-sm font-black text-amber-100 shadow-glow">
-          {card.cost}
+        <div className="card-cost-gem hero-cost">
+          <strong>{card.cost}</strong>
+          <span>AP</span>
         </div>
         <div className="absolute inset-x-0 top-0 h-16 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,.22),transparent_65%)]" />
         <div className="relative mb-2 h-16 overflow-hidden rounded-md border border-white/10 bg-black/25">
@@ -75,6 +76,7 @@ export function HeroGameCard({
         </div>
         <p className="relative mt-2 line-clamp-4 text-[11px] leading-snug text-stone-200/90">{card.text}</p>
         <div className="mt-auto flex items-center justify-between pt-2 text-[10px] uppercase tracking-[0.18em] text-amber-100/80">
+          <span>{card.cost} AP</span>
           <span>Lv {card.level}</span>
           <span>R {card.range}</span>
         </div>
@@ -87,6 +89,7 @@ export function HeroGameCard({
           text={card.text}
           deck={card.classId}
           cost={card.cost}
+          resourceLabel="AP"
           flipped={flipped}
           onFlip={() => setFlipped((value) => !value)}
           onClose={() => setFocused(false)}
@@ -142,8 +145,9 @@ export function DMGameCard({
           selected ? "ring-2 ring-fuchsia-300 shadow-[0_0_28px_rgba(217,70,239,.35)]" : ""
         } ${disabled ? "opacity-45 grayscale" : ""}`}
       >
-        <div className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full border border-fuchsia-200/50 bg-black/65 text-sm font-black text-fuchsia-100">
-          {card.cost}
+        <div className="card-cost-gem doom-cost">
+          <strong>{card.cost}</strong>
+          <span>Doom</span>
         </div>
         <div className="relative mb-2 h-16 overflow-hidden rounded-md border border-fuchsia-100/10 bg-black/35">
           <CardArtwork deck="dm" icon={card.icon} compact />
@@ -152,7 +156,7 @@ export function DMGameCard({
         {card.trigger && <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-red-200">{card.trigger}</div>}
         <p className="relative mt-2 line-clamp-5 text-[11px] leading-snug text-stone-200/90">{card.text}</p>
         <div className="mt-auto pt-2 text-[10px] uppercase tracking-[0.18em] text-fuchsia-100/80">
-          Doom
+          {card.cost} Doom
         </div>
       </motion.button>
       {focused && (
@@ -163,6 +167,7 @@ export function DMGameCard({
           text={card.text}
           deck="dm"
           cost={card.cost}
+          resourceLabel="Doom"
           flipped={flipped}
           onFlip={() => setFlipped((value) => !value)}
           onClose={() => setFocused(false)}
@@ -218,8 +223,9 @@ export function MonsterActionCard({
           selected ? "ring-2 ring-red-300 shadow-[0_0_28px_rgba(248,113,113,.35)]" : ""
         } ${disabled ? "opacity-45 grayscale" : ""}`}
       >
-        <div className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full border border-red-200/50 bg-black/65 text-sm font-black text-red-100">
-          {action.cost}
+        <div className="card-cost-gem monster-cost">
+          <strong>{action.cost}</strong>
+          <span>AP</span>
         </div>
         <div className="relative mb-2 h-16 overflow-hidden rounded-md border border-red-100/10 bg-black/35">
           <CardArtwork deck="monster" icon={action.icon} compact />
@@ -242,6 +248,7 @@ export function MonsterActionCard({
           text={action.text}
           deck="monster"
           cost={action.cost}
+          resourceLabel="AP"
           flipped={flipped}
           onFlip={() => setFlipped((value) => !value)}
           onClose={() => setFocused(false)}
@@ -258,6 +265,7 @@ function CardFocus({
   text,
   deck,
   cost,
+  resourceLabel,
   flipped,
   onFlip,
   onClose,
@@ -268,6 +276,7 @@ function CardFocus({
   text: string;
   deck: string;
   cost: number;
+  resourceLabel: string;
   flipped: boolean;
   onFlip: () => void;
   onClose: () => void;
@@ -309,7 +318,10 @@ function CardFocus({
           transition={{ duration: 0.45 }}
         >
           <div className="card-focus-face card-front">
-            <div className="card-focus-cost">{cost}</div>
+            <div className="card-focus-cost">
+              <strong>{cost}</strong>
+              <span>{resourceLabel}</span>
+            </div>
             <div className="card-focus-art">
               <CardArtwork deck={deck} icon={icon} />
             </div>

@@ -709,6 +709,96 @@ const spendAndUpdate = (mapState: MapState, unit: Unit, cost: number): [MapState
   return [updateUnit(mapState, spent), spent];
 };
 
+const advanceActivation = (mapState: MapState, campaign: CampaignState | null): MapState => {
+  if (!mapState.activeUnitId) return mapState;
+  const active = getActiveUnit(mapState);
+  if (!active) return mapState;
+  let next = updateUnit(mapState, { ...active, activated: true });
+  const nextIndex = nextRevealedInitiativeIndex(next);
+
+  if (nextIndex === undefined) {
+    const beastmaster = Boolean(campaign?.dm.specialization === "Beastmaster");
+    const recoveredHeroes = next.heroes.map((unit) => recoverAp({ ...unit, activated: false }));
+    const recoveredMonsters = next.monsters.map((unit) =>
+      recoverAp({ ...unit, activated: false }, beastmaster && unit.family === "beast" ? 1 : 0),
+    );
+    const drawn = next.dmDeck[0];
+    const initiative = rollInitiative(recoveredHeroes, recoveredMonsters);
+    const firstVisibleIndex = Math.max(
+      0,
+      initiative.order.findIndex((entry) => {
+        const unit = [...recoveredHeroes, ...recoveredMonsters].find((candidate) => candidate.id === entry.unitId);
+        return unit ? canActivateInRevealedSpace({ ...next, heroes: recoveredHeroes, monsters: recoveredMonsters }, unit) : false;
+      }),
+    );
+    const activeUnitId = initiative.order[firstVisibleIndex]?.unitId ?? null;
+    next = {
+      ...next,
+      round: next.round + 1,
+      doom: next.doom + 1,
+      escalation: Math.min(currentMapDefinition(next).escalation?.max ?? 99, next.escalation + 1),
+      heroes: recoveredHeroes,
+      monsters: recoveredMonsters,
+      initiative: { ...initiative, currentIndex: firstVisibleIndex },
+      activeUnitId,
+      selectedUnitId: activeUnitId,
+      selectedCardId: null,
+      selectedMonsterActionId: null,
+      selectedDmCardId: null,
+      actionMode: "select",
+      pendingAttack: undefined,
+      pendingDiceRoll: undefined,
+      dmHand: drawn ? [...next.dmHand, drawn].slice(0, 5) : next.dmHand,
+      dmDeck: drawn ? next.dmDeck.slice(1) : next.dmDeck,
+      dmCardPlayedThisRound: false,
+      objectives: {
+        ...next.objectives,
+        portalRounds: (next.objectives.portalRounds ?? 0) + 1,
+      },
+    };
+    return addLog(
+      next,
+      `Round ${next.round} begins. Doom rises by 1. Initiative order: ${initiative.order
+        .map((entry) => `${entry.unitName} ${entry.total}`)
+        .join(", ")}.`,
+      "system",
+    );
+  }
+
+  const activeUnitId = next.initiative.order[nextIndex]?.unitId ?? null;
+  return {
+    ...next,
+    initiative: { ...next.initiative, currentIndex: nextIndex },
+    activeUnitId,
+    selectedUnitId: activeUnitId,
+    selectedCardId: null,
+    selectedMonsterActionId: null,
+    selectedDmCardId: null,
+    actionMode: "select",
+    pendingAttack: undefined,
+    pendingDiceRoll: undefined,
+  };
+};
+
+const autoEndActivationIfSpent = (
+  mapState: MapState,
+  campaign: CampaignState | null,
+  unitId?: string,
+): MapState => {
+  if (!unitId || mapState.pendingAttack || mapState.pendingDiceRoll || mapState.resolved) return mapState;
+  if (mapState.activeUnitId !== unitId) return mapState;
+  const active = getUnit(mapState, unitId);
+  if (!active || active.ap > 0 || active.activated) return mapState;
+  return advanceActivation(
+    addLog(
+      mapState,
+      `${active.name} has no AP remaining. Activation ends automatically.`,
+      active.side === "heroes" ? "hero" : "dm",
+    ),
+    campaign,
+  );
+};
+
 const moveUnitTo = (mapState: MapState, unit: Unit, position: Position, cost?: number): MapState => {
   const map = mapWithDoors(mapState);
   const apCost = cost ?? multiMoveApCost(map, unit, allUnits(mapState), position);
@@ -1425,6 +1515,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
 
       next = maybeAutoResolve(next);
+      next = autoEndActivationIfSpent(next, state.campaign, active.id);
       saveSnapshot(state.campaign, next, state.screen);
       return { mapState: next };
     }),
@@ -1435,7 +1526,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const active = mapState ? getActiveUnit(mapState) : undefined;
       const card = mapState?.selectedCardId ? heroCardById[mapState.selectedCardId] : undefined;
       if (!mapState || !active || !card) return state;
-      const next = resolveHeroCard(mapState, active, card, active);
+      let next = resolveHeroCard(mapState, active, card, active);
+      next = autoEndActivationIfSpent(next, state.campaign, active.id);
       saveSnapshot(state.campaign, next, state.screen);
       return { mapState: next };
     }),
@@ -1448,7 +1540,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ? monsterTemplateById[active.templateId]?.actions.find((item) => item.id === mapState.selectedMonsterActionId)
         : undefined;
       if (!mapState || !active || !action) return state;
-      const next = resolveMonsterAction(mapState, active, action);
+      let next = resolveMonsterAction(mapState, active, action);
+      next = autoEndActivationIfSpent(next, state.campaign, active.id);
       saveSnapshot(state.campaign, next, state.screen);
       return { mapState: next };
     }),
@@ -1506,6 +1599,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (fumble) {
         next = applyCriticalFailure(next, attacker, target, pending, attackLine);
         next = advancePendingAttack(next, pending);
+        next = autoEndActivationIfSpent(next, state.campaign, pending.attackerId);
         saveSnapshot(state.campaign, next, state.screen);
         return { mapState: next };
       }
@@ -1522,6 +1616,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           "damage",
         );
         next = advancePendingAttack(next, pending);
+        next = autoEndActivationIfSpent(next, state.campaign, pending.attackerId);
         saveSnapshot(state.campaign, next, state.screen);
         return { mapState: next };
       }
@@ -1618,6 +1713,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         "damage",
       );
       next = advancePendingAttack(next, pending);
+      next = autoEndActivationIfSpent(next, state.campaign, pending.attackerId);
       saveSnapshot(state.campaign, next, state.screen);
       return { mapState: next };
     }),
@@ -1654,6 +1750,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       next = applySupportAgro(next, actor, pending.agro);
       next = { ...next, pendingDiceRoll: undefined };
+      next = autoEndActivationIfSpent(next, state.campaign, pending.actorId);
       saveSnapshot(state.campaign, next, state.screen);
       return { mapState: next };
     }),
@@ -1680,6 +1777,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           });
       }
       next = addFloat(addLog(next, `${spent.name} defends.`, spent.side === "heroes" ? "hero" : "dm"), spent.position, "Guard", "ap");
+      next = autoEndActivationIfSpent(next, state.campaign, spent.id);
       saveSnapshot(state.campaign, next, state.screen);
       return { mapState: next };
     }),
@@ -1688,74 +1786,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => {
       const mapState = state.mapState;
       if (!mapState?.activeUnitId) return state;
-      const active = getActiveUnit(mapState);
-      if (!active) return state;
-      let next = updateUnit(mapState, { ...active, activated: true });
-      const nextIndex = nextRevealedInitiativeIndex(next);
-
-      if (nextIndex === undefined) {
-        const campaign = state.campaign;
-        const beastmaster = Boolean(campaign?.dm.specialization === "Beastmaster");
-        const recoveredHeroes = next.heroes.map((unit) => recoverAp({ ...unit, activated: false }));
-        const recoveredMonsters = next.monsters.map((unit) =>
-          recoverAp({ ...unit, activated: false }, beastmaster && unit.family === "beast" ? 1 : 0),
-        );
-        const drawn = next.dmDeck[0];
-        const initiative = rollInitiative(recoveredHeroes, recoveredMonsters);
-        const firstVisibleIndex = Math.max(
-          0,
-          initiative.order.findIndex((entry) => {
-            const unit = [...recoveredHeroes, ...recoveredMonsters].find((candidate) => candidate.id === entry.unitId);
-            return unit ? canActivateInRevealedSpace({ ...next, heroes: recoveredHeroes, monsters: recoveredMonsters }, unit) : false;
-          }),
-        );
-        const activeUnitId = initiative.order[firstVisibleIndex]?.unitId ?? null;
-        next = {
-          ...next,
-          round: next.round + 1,
-          doom: next.doom + 1,
-          escalation: Math.min(currentMapDefinition(next).escalation?.max ?? 99, next.escalation + 1),
-          heroes: recoveredHeroes,
-          monsters: recoveredMonsters,
-          initiative: { ...initiative, currentIndex: firstVisibleIndex },
-          activeUnitId,
-          selectedUnitId: activeUnitId,
-          selectedCardId: null,
-          selectedMonsterActionId: null,
-          selectedDmCardId: null,
-          actionMode: "select",
-          pendingAttack: undefined,
-          pendingDiceRoll: undefined,
-          dmHand: drawn ? [...next.dmHand, drawn].slice(0, 5) : next.dmHand,
-          dmDeck: drawn ? next.dmDeck.slice(1) : next.dmDeck,
-          dmCardPlayedThisRound: false,
-          objectives: {
-            ...next.objectives,
-            portalRounds: (next.objectives.portalRounds ?? 0) + 1,
-          },
-        };
-        next = addLog(
-          next,
-          `Round ${next.round} begins. Doom rises by 1. Initiative order: ${initiative.order
-            .map((entry) => `${entry.unitName} ${entry.total}`)
-            .join(", ")}.`,
-          "system",
-        );
-      } else {
-        const activeUnitId = next.initiative.order[nextIndex]?.unitId ?? null;
-        next = {
-          ...next,
-          initiative: { ...next.initiative, currentIndex: nextIndex },
-          activeUnitId,
-          selectedUnitId: activeUnitId,
-          selectedCardId: null,
-          selectedMonsterActionId: null,
-          selectedDmCardId: null,
-          actionMode: "select",
-          pendingAttack: undefined,
-          pendingDiceRoll: undefined,
-        };
-      }
+      const next = advanceActivation(mapState, state.campaign);
       saveSnapshot(state.campaign, next, state.screen);
       return { mapState: next };
     }),
