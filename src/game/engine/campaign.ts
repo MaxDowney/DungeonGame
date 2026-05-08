@@ -4,6 +4,7 @@ import { dmUpgrades } from "../data/upgrades";
 import { heroCards } from "../data/heroCards";
 import { heroTemplates } from "../data/heroes";
 import { monsterTemplateById } from "../data/monsters";
+import { randomEncounterCards } from "../data/randomEncounters";
 import type {
   CampaignState,
   HeroProgress,
@@ -225,6 +226,8 @@ export const setupMapState = (campaign: CampaignState, mapIndex = campaign.curre
     selectedDmCardId: null,
     actionMode: "select",
     actionTakenThisActivation: false,
+    noRevealedMonstersAtActivationStart: false,
+    monsterDefeatedThisActivation: false,
     heroes,
     monsters,
     doorsOpened: map.tiles.filter((tile) => tile.type === "door" && tile.open).map((tile) => `${tile.x},${tile.y}`),
@@ -265,6 +268,8 @@ export const setupMapState = (campaign: CampaignState, mapIndex = campaign.curre
     floatingText: [],
     visitedRoomIds: initialRoomId ? [initialRoomId] : [],
     roomNarration: initialRoomNarration,
+    randomEncounterDeck: shuffle(randomEncounterCards.map((card) => card.id)),
+    randomEncounterDiscard: [],
   };
 };
 

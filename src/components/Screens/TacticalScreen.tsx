@@ -2,14 +2,18 @@ import { motion } from "framer-motion";
 import { useEffect, useState, type CSSProperties } from "react";
 import {
   ArrowRight,
+  Coins,
   DoorOpen,
   Gem,
   Heart,
   Hourglass,
   ScrollText,
   Shield,
+  Skull,
   Swords,
   Target,
+  UserRound,
+  X,
   Zap,
 } from "lucide-react";
 import { TacticalBoard } from "../Board/TacticalBoard";
@@ -19,6 +23,7 @@ import { APTokens } from "../Tokens/APTokens";
 import { heroCardById } from "../../game/data/heroCards";
 import { dmCardById } from "../../game/data/dmCards";
 import { monsterTemplateById } from "../../game/data/monsters";
+import { randomEncounterById } from "../../game/data/randomEncounters";
 import {
   selectActiveUnit,
   selectCurrentMap,
@@ -391,6 +396,14 @@ function RightPanel() {
           </div>
         )}
       </div>
+      <div
+        className="encounter-watch"
+        data-tooltip="Random Encounter: after a hero activation with no revealed monsters from start to finish, draw from this 50-card deck. No draw happens on a turn where a hero defeated a monster."
+      >
+        <span>Encounter Deck</span>
+        <strong>{mapState.randomEncounterDeck.length}</strong>
+        <small>{mapState.randomEncounterDiscard.length} seen</small>
+      </div>
       <div className="mt-4">
         <div className="eyebrow">Dungeon Hand</div>
         <div className="mt-2 flex gap-2 overflow-x-auto pb-3">
@@ -643,6 +656,64 @@ function RoomNarrationOverlay() {
   );
 }
 
+function RandomEncounterOverlay() {
+  const reveal = useGameStore((state) => state.mapState?.activeRandomEncounter);
+  const dismissRandomEncounter = useGameStore((state) => state.dismissRandomEncounter);
+  if (!reveal) return null;
+  const card = randomEncounterById[reveal.cardId];
+  if (!card) return null;
+  const Icon = card.kind === "monster" ? Skull : card.kind === "treasure" ? Coins : UserRound;
+  const typeLabel =
+    card.kind === "monster"
+      ? "Monster Encounter"
+      : card.kind === "treasure"
+        ? "Treasure Encounter"
+        : card.disposition === "bad"
+          ? "Dangerous NPC"
+          : "Helpful NPC";
+
+  return (
+    <motion.div
+      key={reveal.id}
+      className="random-encounter-overlay"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <button className="random-encounter-scrim" onClick={dismissRandomEncounter} title="Close encounter" />
+      <motion.article
+        className={`random-encounter-card ${card.kind} ${card.disposition ?? ""}`}
+        initial={{ y: 34, scale: 0.88, rotateY: -12, rotateX: 8 }}
+        animate={{ y: 0, scale: 1, rotateY: 0, rotateX: 0 }}
+        transition={{ type: "spring", stiffness: 220, damping: 22 }}
+      >
+        <button className="random-encounter-close" onClick={dismissRandomEncounter} data-tooltip="Close encounter card">
+          <X size={18} />
+        </button>
+        <div className="random-encounter-frame">
+          <div className="random-encounter-art">
+            <div className="random-encounter-moon" />
+            <Icon size={68} />
+          </div>
+          <div className="random-encounter-meta">
+            <span>{typeLabel}</span>
+            <i>{card.rarity}</i>
+          </div>
+          <h3>{card.name}</h3>
+          <p>{card.text}</p>
+          <div className="random-encounter-effect">
+            <ScrollText size={18} />
+            <span>{reveal.effectSummary}</span>
+          </div>
+          <button className="primary-button compact" onClick={dismissRandomEncounter}>
+            Continue
+          </button>
+        </div>
+      </motion.article>
+    </motion.div>
+  );
+}
+
 function UnitInspectOverlay({
   unit,
   onClose,
@@ -814,6 +885,7 @@ export function TacticalScreen() {
       <TurnSplashOverlay />
       <UnitInspectOverlay unit={inspectedUnit} onClose={() => setInspectedUnitId(null)} />
       <RoomNarrationOverlay />
+      <RandomEncounterOverlay />
     </section>
   );
 }

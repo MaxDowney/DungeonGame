@@ -65,6 +65,14 @@ export function RulebookOverlay() {
               and upgrades. The short campaign has three connected maps and persists locally.
             </p>
           </div>
+          <div className="rule-card">
+            <h3>Encounters</h3>
+            <p>
+              If a hero spends their whole activation with no revealed monsters on the board, draw
+              a random encounter card at turn end. This does not happen on the turn a hero defeats
+              a monster.
+            </p>
+          </div>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Object.entries(keywordRules).map(([keyword, rule]) => (

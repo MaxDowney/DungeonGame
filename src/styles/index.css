@@ -227,6 +227,40 @@ button {
   color: #f5d0fe;
 }
 
+.encounter-watch {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: .15rem .75rem;
+  margin-top: .75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(253,230,138,.18);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(248,113,113,.12), transparent 42%),
+    rgba(0,0,0,.28);
+  padding: .7rem .8rem;
+  color: #fde68a;
+}
+
+.encounter-watch span {
+  font-size: .72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+}
+
+.encounter-watch strong {
+  font-family: Georgia, serif;
+  font-size: 1.35rem;
+  color: #fff7d6;
+}
+
+.encounter-watch small {
+  grid-column: 1 / -1;
+  color: #d6d3d1;
+  font-size: .78rem;
+}
+
 .campaign-map-bg {
   background:
     radial-gradient(circle at 30% 38%, rgba(234,179,8,.14), transparent 18%),
@@ -2191,6 +2225,192 @@ button {
   color: #4b3320;
   font-size: 1rem;
   line-height: 1.6;
+}
+
+.random-encounter-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  perspective: 1200px;
+  pointer-events: auto;
+}
+
+.random-encounter-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(248, 113, 113, .2), transparent 31%),
+    radial-gradient(circle at 22% 72%, rgba(251, 191, 36, .12), transparent 32%),
+    rgba(0,0,0,.68);
+  backdrop-filter: blur(6px);
+}
+
+.random-encounter-card {
+  position: relative;
+  width: min(25rem, calc(100vw - 2rem));
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 34px 80px rgba(0,0,0,.72));
+}
+
+.random-encounter-frame {
+  position: relative;
+  display: grid;
+  gap: .85rem;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(253,230,138,.38);
+  background:
+    linear-gradient(145deg, rgba(250,240,207,.95), rgba(166,105,53,.95) 58%, rgba(45,25,18,.98)),
+    repeating-linear-gradient(0deg, rgba(57,34,20,.05) 0 2px, transparent 2px 7px);
+  padding: 1rem;
+  color: #24140b;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), 0 0 62px rgba(245,158,11,.24);
+}
+
+.random-encounter-frame::before {
+  content: "";
+  position: absolute;
+  inset: .55rem;
+  border-radius: 14px;
+  border: 1px solid rgba(48,29,15,.22);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.random-encounter-card.monster .random-encounter-frame {
+  border-color: rgba(248,113,113,.45);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(239,68,68,.24), transparent 34%),
+    linear-gradient(145deg, #d6b788, #5f2c2b 56%, #130d12);
+  color: #fef2f2;
+}
+
+.random-encounter-card.treasure .random-encounter-frame {
+  border-color: rgba(253,230,138,.58);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(253,230,138,.42), transparent 36%),
+    linear-gradient(145deg, #f3dfaa, #9f642d 58%, #25150b);
+}
+
+.random-encounter-card.npc.good .random-encounter-frame {
+  border-color: rgba(134,239,172,.42);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(134,239,172,.26), transparent 36%),
+    linear-gradient(145deg, #e7d7b5, #58775b 58%, #162116);
+}
+
+.random-encounter-card.npc.bad .random-encounter-frame {
+  border-color: rgba(216,180,254,.42);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(168,85,247,.3), transparent 35%),
+    linear-gradient(145deg, #c9b28b, #4f2a5f 58%, #120b18);
+  color: #f7e8ff;
+}
+
+.random-encounter-close {
+  position: absolute;
+  top: .65rem;
+  right: .65rem;
+  z-index: 5;
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.24);
+  background: rgba(0,0,0,.42);
+  color: #fff7ed;
+}
+
+.random-encounter-art {
+  position: relative;
+  display: grid;
+  min-height: 12rem;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.16);
+  background:
+    radial-gradient(circle at 50% 58%, rgba(255,255,255,.16), transparent 21%),
+    linear-gradient(160deg, rgba(15,23,42,.12), rgba(0,0,0,.42)),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.045) 0 4px, transparent 4px 11px);
+  box-shadow: inset 0 0 50px rgba(0,0,0,.34);
+}
+
+.random-encounter-art svg {
+  position: relative;
+  z-index: 2;
+  color: currentColor;
+  filter: drop-shadow(0 14px 20px rgba(0,0,0,.42));
+}
+
+.random-encounter-moon {
+  position: absolute;
+  width: 8rem;
+  height: 8rem;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(255,255,255,.76), rgba(253,230,138,.24) 58%, transparent 62%);
+  opacity: .72;
+  filter: blur(.2px);
+}
+
+.random-encounter-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  text-transform: uppercase;
+  font-size: .68rem;
+  font-weight: 900;
+  color: currentColor;
+}
+
+.random-encounter-meta i {
+  font-style: normal;
+  opacity: .7;
+}
+
+.random-encounter-card h3 {
+  position: relative;
+  z-index: 3;
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: clamp(2rem, 7vw, 3rem);
+  line-height: .95;
+}
+
+.random-encounter-card p {
+  position: relative;
+  z-index: 3;
+  margin: 0;
+  color: currentColor;
+  line-height: 1.55;
+  opacity: .86;
+}
+
+.random-encounter-effect {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(0,0,0,.24);
+  padding: .8rem;
+  color: #fff7ed;
+  font-size: .92rem;
+  line-height: 1.45;
+}
+
+.random-encounter-card .primary-button {
+  position: relative;
+  z-index: 3;
+  justify-content: center;
 }
 
 .rule-card,

@@ -40,4 +40,5 @@ export const keywordRules: Record<string, string> = {
   Boon: "A campaign reward that gives heroes tactical advantages.",
   Reaction: "A card that can answer a trigger. In this prototype, reactions can be played manually from hand.",
   Resistance: "After hard crowd control, monsters build protection against repeated lock effects.",
+  "Random Encounter": "If a hero has no revealed monsters for their entire activation and did not defeat a monster, draw an encounter card.",
 };

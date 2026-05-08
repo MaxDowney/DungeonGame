@@ -257,6 +257,39 @@ export interface DMCard {
   icon: string;
 }
 
+export type RandomEncounterKind = "monster" | "treasure" | "npc";
+
+export interface RandomEncounterEffect {
+  kind: RandomEncounterKind;
+  monsterTemplateId?: string;
+  count?: number;
+  healAll?: number;
+  apAll?: number;
+  defenseAll?: number;
+  doomDelta?: number;
+  condition?: ConditionType;
+  conditionDuration?: number;
+  conditionValue?: number;
+}
+
+export interface RandomEncounterCard {
+  id: string;
+  name: string;
+  kind: RandomEncounterKind;
+  disposition?: "good" | "bad";
+  rarity: "common" | "uncommon" | "rare";
+  text: string;
+  effectText: string;
+  icon: string;
+  effect: RandomEncounterEffect;
+}
+
+export interface RandomEncounterReveal {
+  id: string;
+  cardId: string;
+  effectSummary: string;
+}
+
 export interface DMUpgrade {
   id: string;
   name: string;
@@ -417,6 +450,8 @@ export interface MapState {
   selectedDmCardId: string | null;
   actionMode: "select" | "move" | "attack" | "interact" | "card" | "monsterAction" | "dmCard";
   actionTakenThisActivation: boolean;
+  noRevealedMonstersAtActivationStart: boolean;
+  monsterDefeatedThisActivation: boolean;
   heroes: Unit[];
   monsters: Unit[];
   doorsOpened: string[];
@@ -442,6 +477,9 @@ export interface MapState {
   rollBanner?: RollBanner;
   visitedRoomIds: string[];
   roomNarration?: RoomNarration;
+  randomEncounterDeck: string[];
+  randomEncounterDiscard: string[];
+  activeRandomEncounter?: RandomEncounterReveal;
   pendingAttack?: PendingAttack;
   pendingDiceRoll?: PendingDiceRoll;
   resolved?: PendingRewards;

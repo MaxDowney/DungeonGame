@@ -4,6 +4,7 @@ import { heroCardById } from "../data/heroCards";
 import { heroTemplates } from "../data/heroes";
 import { campaignMaps } from "../data/maps";
 import { monsterTemplateById } from "../data/monsters";
+import { randomEncounterById, randomEncounterCards } from "../data/randomEncounters";
 import { dmUpgradeById } from "../data/upgrades";
 import { applyAgro } from "../engine/agro";
 import { canSpendAp, recoverAp, spendAp } from "../engine/ap";
@@ -47,6 +48,7 @@ import type {
   PendingAttack,
   PendingDiceRoll,
   Position,
+  RandomEncounterCard,
   RollBanner,
   Screen,
   SettingsState,
@@ -76,6 +78,7 @@ interface GameStore {
   setScreen: (screen: Screen) => void;
   toggleHelp: () => void;
   dismissRoomNarration: () => void;
+  dismissRandomEncounter: () => void;
   toggleDebug: () => void;
   startCurrentMap: () => void;
   selectUnit: (unitId: string | null) => void;
@@ -108,6 +111,15 @@ interface GameStore {
 
 const allUnits = (mapState: MapState): Unit[] => [...mapState.heroes, ...mapState.monsters];
 
+const shuffle = <T,>(items: T[]): T[] => {
+  const next = [...items];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+};
+
 const getUnit = (mapState: MapState, unitId: string | null): Unit | undefined =>
   unitId ? allUnits(mapState).find((unit) => unit.id === unitId) : undefined;
 
@@ -132,6 +144,24 @@ const isUnitRevealed = (mapState: MapState, unit: Unit): boolean =>
 
 const canActivateInRevealedSpace = (mapState: MapState, unit: Unit): boolean =>
   !unit.defeated && !unit.downed && isUnitRevealed(mapState, unit);
+
+const livingRevealedMonsters = (mapState: MapState): Unit[] =>
+  mapState.monsters.filter((monster) => !monster.defeated && isUnitRevealed(mapState, monster));
+
+const hasLivingRevealedMonsters = (mapState: MapState): boolean =>
+  livingRevealedMonsters(mapState).length > 0;
+
+const withActivationStartState = (mapState: MapState, activeUnitId = mapState.activeUnitId): MapState => {
+  const active = getUnit(mapState, activeUnitId);
+  return {
+    ...mapState,
+    actionTakenThisActivation: false,
+    monsterDefeatedThisActivation: false,
+    noRevealedMonstersAtActivationStart: Boolean(
+      active?.side === "heroes" && !hasLivingRevealedMonsters(mapState),
+    ),
+  };
+};
 
 const nextRevealedInitiativeIndex = (
   mapState: MapState,
@@ -258,17 +288,27 @@ const normalizeStartingRoomVisibility = (mapState: MapState): MapState => {
 
 const normalizeInitiativeState = (mapState: MapState): MapState => {
   const runtimeInitiative = mapState.initiative as Partial<MapState["initiative"]> | undefined;
-  const normalizedRooms = normalizeStartingRoomVisibility({
+  const normalizedRoomsBase = normalizeStartingRoomVisibility({
     ...mapState,
     visitedRoomIds: mapState.visitedRoomIds ?? [],
     actionTakenThisActivation: Boolean(mapState.actionTakenThisActivation),
   });
+  const normalizedRooms: MapState = {
+    ...normalizedRoomsBase,
+    actionTakenThisActivation: Boolean(mapState.actionTakenThisActivation),
+    noRevealedMonstersAtActivationStart: Boolean(mapState.noRevealedMonstersAtActivationStart),
+    monsterDefeatedThisActivation: Boolean(mapState.monsterDefeatedThisActivation),
+    randomEncounterDeck: Array.isArray(mapState.randomEncounterDeck)
+      ? mapState.randomEncounterDeck
+      : shuffle(randomEncounterCards.map((card) => card.id)),
+    randomEncounterDiscard: Array.isArray(mapState.randomEncounterDiscard) ? mapState.randomEncounterDiscard : [],
+  };
   if (Array.isArray(runtimeInitiative?.order)) {
     const active = getActiveUnit(normalizedRooms);
     if (!active || canActivateInRevealedSpace(normalizedRooms, active)) return normalizedRooms;
     const revealedIndex = nextRevealedInitiativeIndex({ ...normalizedRooms, initiative: { ...normalizedRooms.initiative, currentIndex: -1 } }, 0);
     const activeUnitId = revealedIndex === undefined ? null : normalizedRooms.initiative.order[revealedIndex]?.unitId ?? null;
-    return {
+    return withActivationStartState({
       ...normalizedRooms,
       initiative: {
         ...normalizedRooms.initiative,
@@ -276,7 +316,7 @@ const normalizeInitiativeState = (mapState: MapState): MapState => {
       },
       activeUnitId,
       selectedUnitId: activeUnitId,
-    };
+    }, activeUnitId);
   }
 
   const heroes = normalizedRooms.heroes.map((unit) => ({ ...unit, activated: false }));
@@ -284,7 +324,7 @@ const normalizeInitiativeState = (mapState: MapState): MapState => {
   const initiative = rollInitiative(heroes, monsters);
   const activeUnitId = initiative.order[0]?.unitId ?? null;
   return addLog(
-    {
+    withActivationStartState({
       ...normalizedRooms,
       heroes,
       monsters,
@@ -296,7 +336,7 @@ const normalizeInitiativeState = (mapState: MapState): MapState => {
       selectedDmCardId: null,
       actionMode: "select",
       actionTakenThisActivation: false,
-    },
+    }, activeUnitId),
     "Initiative updated to per-figure d10 + Initiative order for this round.",
     "system",
   );
@@ -673,7 +713,11 @@ const maybeApplyMapObjectivesAfterDamage = (
   updatedTarget: Unit,
 ): MapState => {
   let next = mapState;
-  if (target.side === "dm" && updatedTarget.defeated) {
+  if (target.side === "dm" && updatedTarget.defeated && !target.defeated) {
+    next = {
+      ...next,
+      monsterDefeatedThisActivation: true,
+    };
     const map = currentMapDefinition(mapState);
     const mapMonster = map.monsters.find((monster) => monster.id === target.id);
     if (mapMonster?.objectiveMonster || map.objective.type === "defeatBoss") {
@@ -721,11 +765,264 @@ const spendAndUpdate = (mapState: MapState, unit: Unit, cost: number): [MapState
   ];
 };
 
+const encounterKindLabel = (card: RandomEncounterCard): string =>
+  card.kind === "monster"
+    ? "Monster"
+    : card.kind === "treasure"
+      ? "Treasure"
+      : card.disposition === "bad"
+        ? "NPC - Trouble"
+        : "NPC - Ally";
+
+const createEncounterMonsterUnit = (
+  campaign: CampaignState | null,
+  templateId: string,
+  position: Position,
+  sourceName: string,
+  index: number,
+): Unit | undefined => {
+  const template = monsterTemplateById[templateId];
+  if (!template) return undefined;
+  const isBrute = template.family === "brute";
+  const isHound = template.family === "beast";
+  const hasUpgrade = (upgradeId: string) => Boolean(campaign?.dm.upgrades.includes(upgradeId));
+  const defense = template.stats.defense + (isBrute && hasUpgrade("thick-hide") ? 1 : 0);
+  const speed = template.stats.speed + (isHound && hasUpgrade("vicious-hounds") ? 1 : 0);
+  const maxHp = template.stats.maxHp;
+
+  return {
+    id: `encounter-${template.id}-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+    templateId: template.id,
+    name: `${sourceName}: ${template.name}`,
+    side: "dm",
+    family: template.family,
+    portraitGlyph: template.portraitGlyph,
+    color: template.color,
+    level: campaign?.dm.level ?? 1,
+    maxHp,
+    hp: maxHp,
+    maxAp: template.stats.maxAp,
+    ap: template.stats.maxAp,
+    recovery: template.stats.recovery,
+    speed,
+    dt: template.stats.dt,
+    defense,
+    initiative: template.stats.initiative,
+    accuracy: template.stats.accuracy,
+    power: template.stats.power ?? 0,
+    position,
+    conditions: [],
+    activated: false,
+    resistance: 0,
+    agro: {
+      currentTargetId: null,
+      pressure: 0,
+    },
+  };
+};
+
+const encounterSpawnPositions = (mapState: MapState, anchor: Unit): Position[] => {
+  const map = mapWithDoors(mapState);
+  const occupied = new Set(allUnits(mapState).filter((unit) => !unit.defeated && !unit.downed).map((unit) => posKey(unit.position)));
+  const candidates = map.tiles
+    .filter((tile) => tile.revealed && !isBlockedTile(tile) && !occupied.has(posKey(tile)))
+    .map((tile) => ({ x: tile.x, y: tile.y }))
+    .filter((position) => distance(position, anchor.position) > 0)
+    .sort((a, b) => distance(b, anchor.position) - distance(a, anchor.position));
+
+  return shuffle(candidates.length ? candidates : map.tiles
+    .filter((tile) => tile.revealed && !isBlockedTile(tile) && !occupied.has(posKey(tile)))
+    .map((tile) => ({ x: tile.x, y: tile.y })));
+};
+
+const addMonsterInitiativeEntry = (mapState: MapState, monster: Unit): MapState => {
+  const roll = Math.floor(Math.random() * 10) + 1;
+  return {
+    ...mapState,
+    initiative: {
+      ...mapState.initiative,
+      order: [
+        ...mapState.initiative.order,
+        {
+          unitId: monster.id,
+          unitName: monster.name,
+          side: "dm",
+          roll,
+          bonus: monster.initiative,
+          total: roll + monster.initiative,
+        },
+      ],
+    },
+  };
+};
+
+const spawnEncounterMonsters = (
+  mapState: MapState,
+  campaign: CampaignState | null,
+  active: Unit,
+  card: RandomEncounterCard,
+): MapState => {
+  if (!card.effect.monsterTemplateId) return mapState;
+  const count = Math.max(1, card.effect.count ?? 1);
+  let next = mapState;
+  let spawned = 0;
+
+  for (let index = 0; index < count; index += 1) {
+    const position = encounterSpawnPositions(next, active)[0];
+    const monster = position
+      ? createEncounterMonsterUnit(campaign, card.effect.monsterTemplateId, position, card.name, index + 1)
+      : undefined;
+    if (!monster) continue;
+    spawned += 1;
+    next = {
+      ...next,
+      monsters: [...next.monsters, monster],
+    };
+    next = addMonsterInitiativeEntry(next, monster);
+    next = addFloat(next, monster.position, "Encounter", "doom");
+  }
+
+  return spawned
+    ? addLog(next, `${card.name} adds ${spawned} monster${spawned === 1 ? "" : "s"} to the current round's initiative.`, "dm")
+    : addLog(next, `${card.name} found no revealed empty space for a monster.`, "system");
+};
+
+const applyEncounterHeroEffects = (
+  mapState: MapState,
+  card: RandomEncounterCard,
+  active: Unit,
+): MapState => {
+  let next = mapState;
+  const effect = card.effect;
+
+  if (effect.healAll) {
+    next = updateUnits(
+      next,
+      next.heroes
+        .filter((hero) => !hero.defeated && !hero.downed)
+        .map((hero) => ({ ...hero, hp: Math.min(hero.maxHp, hero.hp + effect.healAll!) })),
+    );
+    next.heroes
+      .filter((hero) => !hero.defeated && !hero.downed)
+      .forEach((hero) => {
+        next = addFloat(next, hero.position, `+${effect.healAll} HP`, "heal");
+      });
+  }
+
+  if (effect.apAll) {
+    next = updateUnits(
+      next,
+      next.heroes
+        .filter((hero) => !hero.defeated && !hero.downed)
+        .map((hero) => ({ ...hero, ap: Math.min(hero.maxAp, hero.ap + effect.apAll!) })),
+    );
+    next.heroes
+      .filter((hero) => !hero.defeated && !hero.downed)
+      .forEach((hero) => {
+        next = addFloat(next, hero.position, `+${effect.apAll} AP`, "ap");
+      });
+  }
+
+  if (effect.defenseAll) {
+    next = updateUnits(
+      next,
+      next.heroes
+        .filter((hero) => !hero.defeated && !hero.downed)
+        .map((hero) => ({ ...hero, defending: (hero.defending ?? 0) + effect.defenseAll! })),
+    );
+    next.heroes
+      .filter((hero) => !hero.defeated && !hero.downed)
+      .forEach((hero) => {
+        next = addFloat(next, hero.position, `Guard ${effect.defenseAll}`, "ap");
+      });
+  }
+
+  if (effect.condition) {
+    const target = getUnit(next, active.id);
+    if (target && !target.defeated && !target.downed) {
+      const conditioned = addCondition(target, effect.condition, effect.conditionDuration ?? 1, effect.conditionValue);
+      next = updateUnit(next, conditioned);
+      next = addFloat(next, conditioned.position, effect.condition, "damage");
+    }
+  }
+
+  if (effect.doomDelta) {
+    next = { ...next, doom: Math.max(0, next.doom + effect.doomDelta) };
+    next = addFloat(next, active.position, effect.doomDelta > 0 ? `+${effect.doomDelta} Doom` : `${effect.doomDelta} Doom`, "doom");
+  }
+
+  return next;
+};
+
+const drawEncounterCard = (
+  mapState: MapState,
+): { card: RandomEncounterCard; deck: string[]; discard: string[] } => {
+  const fullDeck = randomEncounterCards.map((card) => card.id);
+  const deckSource = mapState.randomEncounterDeck.length
+    ? mapState.randomEncounterDeck
+    : shuffle(mapState.randomEncounterDiscard.length ? mapState.randomEncounterDiscard : fullDeck);
+  const discardSource = mapState.randomEncounterDeck.length ? mapState.randomEncounterDiscard : [];
+  const [cardId, ...deck] = deckSource;
+  const card = randomEncounterById[cardId] ?? randomEncounterCards[0];
+  return {
+    card,
+    deck,
+    discard: [...discardSource, card.id],
+  };
+};
+
+const drawAndApplyRandomEncounter = (
+  mapState: MapState,
+  campaign: CampaignState | null,
+  active: Unit,
+): MapState => {
+  const { card, deck, discard } = drawEncounterCard(mapState);
+  let next: MapState = {
+    ...mapState,
+    randomEncounterDeck: deck,
+    randomEncounterDiscard: discard,
+    activeRandomEncounter: {
+      id: crypto.randomUUID(),
+      cardId: card.id,
+      effectSummary: card.effectText,
+    },
+  };
+
+  next = addRollBanner(
+    next,
+    "RANDOM ENCOUNTER",
+    card.name,
+    card.kind === "treasure" || card.disposition === "good" ? "heal" : "damage",
+  );
+  next = addLog(
+    next,
+    `Random encounter (${encounterKindLabel(card)}): ${card.name}. ${card.effectText}`,
+    card.kind === "monster" || card.disposition === "bad" ? "dm" : "hero",
+  );
+  next = applyEncounterHeroEffects(next, card, active);
+  next = spawnEncounterMonsters(next, campaign, active, card);
+  return next;
+};
+
+const maybeDrawRandomEncounter = (
+  mapState: MapState,
+  campaign: CampaignState | null,
+  active: Unit,
+): MapState => {
+  if (mapState.activeRandomEncounter) return mapState;
+  if (active.side !== "heroes") return mapState;
+  if (!mapState.noRevealedMonstersAtActivationStart) return mapState;
+  if (mapState.monsterDefeatedThisActivation) return mapState;
+  if (hasLivingRevealedMonsters(mapState)) return mapState;
+  return drawAndApplyRandomEncounter(mapState, campaign, active);
+};
+
 const advanceActivation = (mapState: MapState, campaign: CampaignState | null): MapState => {
   if (!mapState.activeUnitId) return mapState;
   const active = getActiveUnit(mapState);
   if (!active) return mapState;
   let next = updateUnit(mapState, { ...active, activated: true });
+  next = maybeDrawRandomEncounter(next, campaign, active);
   const nextIndex = nextRevealedInitiativeIndex(next);
 
   if (nextIndex === undefined) {
@@ -744,7 +1041,7 @@ const advanceActivation = (mapState: MapState, campaign: CampaignState | null): 
       }),
     );
     const activeUnitId = initiative.order[firstVisibleIndex]?.unitId ?? null;
-    next = {
+    next = withActivationStartState({
       ...next,
       round: next.round + 1,
       doom: next.doom + 1,
@@ -768,7 +1065,7 @@ const advanceActivation = (mapState: MapState, campaign: CampaignState | null): 
         ...next.objectives,
         portalRounds: (next.objectives.portalRounds ?? 0) + 1,
       },
-    };
+    }, activeUnitId);
     return addLog(
       next,
       `Round ${next.round} begins. Doom rises by 1. Initiative order: ${initiative.order
@@ -779,7 +1076,7 @@ const advanceActivation = (mapState: MapState, campaign: CampaignState | null): 
   }
 
   const activeUnitId = next.initiative.order[nextIndex]?.unitId ?? null;
-  return {
+  return withActivationStartState({
     ...next,
     initiative: { ...next.initiative, currentIndex: nextIndex },
     activeUnitId,
@@ -791,7 +1088,7 @@ const advanceActivation = (mapState: MapState, campaign: CampaignState | null): 
     actionTakenThisActivation: false,
     pendingAttack: undefined,
     pendingDiceRoll: undefined,
-  };
+  }, activeUnitId);
 };
 
 const autoEndActivationIfSpent = (
@@ -1355,6 +1652,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return { mapState };
     }),
 
+  dismissRandomEncounter: () =>
+    set((state) => {
+      if (!state.mapState) return state;
+      const mapState = { ...state.mapState, activeRandomEncounter: undefined };
+      saveSnapshot(state.campaign, mapState, state.screen);
+      return { mapState };
+    }),
+
   toggleDebug: () => {
     const settings = { ...get().settings, debug: !get().settings.debug };
     saveSettings(settings);
@@ -1365,7 +1670,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const campaign = get().campaign;
     if (!campaign) return;
     const normalizedCampaign = normalizeCampaignForCurrentData(campaign);
-    const mapState = setupMapState(normalizedCampaign);
+    const mapState = withActivationStartState(setupMapState(normalizedCampaign));
     saveSnapshot(normalizedCampaign, mapState, "tactical");
     set({ campaign: normalizedCampaign, mapState, screen: "tactical" });
   },
