@@ -416,6 +416,7 @@ export interface MapState {
   selectedMonsterActionId: string | null;
   selectedDmCardId: string | null;
   actionMode: "select" | "move" | "attack" | "interact" | "card" | "monsterAction" | "dmCard";
+  actionTakenThisActivation: boolean;
   heroes: Unit[];
   monsters: Unit[];
   doorsOpened: string[];

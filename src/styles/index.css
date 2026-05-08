@@ -168,7 +168,8 @@ button {
 
 .primary-button:disabled,
 .secondary-button:disabled,
-.action-button:disabled {
+.action-button:disabled,
+.action-button.is-disabled {
   cursor: not-allowed;
   opacity: .45;
   filter: grayscale(.6);

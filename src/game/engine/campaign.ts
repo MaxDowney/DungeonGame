@@ -224,6 +224,7 @@ export const setupMapState = (campaign: CampaignState, mapIndex = campaign.curre
     selectedMonsterActionId: null,
     selectedDmCardId: null,
     actionMode: "select",
+    actionTakenThisActivation: false,
     heroes,
     monsters,
     doorsOpened: map.tiles.filter((tile) => tile.type === "door" && tile.open).map((tile) => `${tile.x},${tile.y}`),

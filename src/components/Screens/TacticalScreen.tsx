@@ -194,6 +194,10 @@ function BottomPanel() {
   const selectedAction = mapState.selectedMonsterActionId
     ? monsterActions.find((action) => action.id === mapState.selectedMonsterActionId)
     : undefined;
+  const restDisabled = Boolean(mapState.actionTakenThisActivation || mapState.pendingAttack || mapState.pendingDiceRoll);
+  const restTooltip = mapState.actionTakenThisActivation
+    ? `Rest: unavailable because ${active.name} has already taken an action this activation.`
+    : `Rest: only available before taking any other action. Skip the rest of ${active.name}'s activation, roll d3, recover Recovery ${active.recovery} + d3 AP up to max.`;
 
   return (
     <div className="panel bottom-panel p-4">
@@ -259,7 +263,14 @@ function BottomPanel() {
               </span>
               <span className="action-button__cost">1 AP</span>
             </button>
-            <button className="action-button rest-action" onClick={restActive} data-tooltip={`Rest: skip the rest of ${active.name}'s activation, roll d3, recover Recovery ${active.recovery} + d3 AP up to max.`}>
+            <button
+              className={`action-button rest-action ${restDisabled ? "is-disabled" : ""}`}
+              onClick={() => {
+                if (!restDisabled) restActive();
+              }}
+              aria-disabled={restDisabled}
+              data-tooltip={restTooltip}
+            >
               <span className="action-button__icon"><Hourglass size={16} /></span>
               <span className="action-button__copy">
                 <strong>Rest</strong>
@@ -292,7 +303,14 @@ function BottomPanel() {
       ) : (
         <div className="grid gap-3">
           <div className="universal-actions monster-rest-actions">
-            <button className="action-button rest-action" onClick={restActive} data-tooltip={`Rest: skip the rest of ${active.name}'s activation, roll d3, recover Recovery ${active.recovery} + d3 AP up to max.`}>
+            <button
+              className={`action-button rest-action ${restDisabled ? "is-disabled" : ""}`}
+              onClick={() => {
+                if (!restDisabled) restActive();
+              }}
+              aria-disabled={restDisabled}
+              data-tooltip={restTooltip}
+            >
               <span className="action-button__icon"><Hourglass size={16} /></span>
               <span className="action-button__copy">
                 <strong>Rest</strong>

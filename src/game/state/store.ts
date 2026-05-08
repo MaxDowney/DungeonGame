@@ -261,6 +261,7 @@ const normalizeInitiativeState = (mapState: MapState): MapState => {
   const normalizedRooms = normalizeStartingRoomVisibility({
     ...mapState,
     visitedRoomIds: mapState.visitedRoomIds ?? [],
+    actionTakenThisActivation: Boolean(mapState.actionTakenThisActivation),
   });
   if (Array.isArray(runtimeInitiative?.order)) {
     const active = getActiveUnit(normalizedRooms);
@@ -294,6 +295,7 @@ const normalizeInitiativeState = (mapState: MapState): MapState => {
       selectedMonsterActionId: null,
       selectedDmCardId: null,
       actionMode: "select",
+      actionTakenThisActivation: false,
     },
     "Initiative updated to per-figure d10 + Initiative order for this round.",
     "system",
@@ -707,7 +709,16 @@ const maybeApplyMapObjectivesAfterDamage = (
 
 const spendAndUpdate = (mapState: MapState, unit: Unit, cost: number): [MapState, Unit] => {
   const spent = spendAp(unit, cost);
-  return [updateUnit(mapState, spent), spent];
+  return [
+    updateUnit(
+      {
+        ...mapState,
+        actionTakenThisActivation: mapState.activeUnitId === unit.id ? true : mapState.actionTakenThisActivation,
+      },
+      spent,
+    ),
+    spent,
+  ];
 };
 
 const advanceActivation = (mapState: MapState, campaign: CampaignState | null): MapState => {
@@ -747,6 +758,7 @@ const advanceActivation = (mapState: MapState, campaign: CampaignState | null): 
       selectedMonsterActionId: null,
       selectedDmCardId: null,
       actionMode: "select",
+      actionTakenThisActivation: false,
       pendingAttack: undefined,
       pendingDiceRoll: undefined,
       dmHand: drawn ? [...next.dmHand, drawn].slice(0, 5) : next.dmHand,
@@ -776,6 +788,7 @@ const advanceActivation = (mapState: MapState, campaign: CampaignState | null): 
     selectedMonsterActionId: null,
     selectedDmCardId: null,
     actionMode: "select",
+    actionTakenThisActivation: false,
     pendingAttack: undefined,
     pendingDiceRoll: undefined,
   };
@@ -1802,6 +1815,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const mapState = state.mapState;
       const active = mapState ? getActiveUnit(mapState) : undefined;
       if (!mapState || !active || active.defeated || active.downed || mapState.pendingAttack || mapState.pendingDiceRoll) return state;
+      if (mapState.actionTakenThisActivation) {
+        const next = addLog(mapState, `${active.name} cannot rest after taking another action this activation.`, "system");
+        saveSnapshot(state.campaign, next, state.screen);
+        return { mapState: next };
+      }
       const next = beginPendingDiceRoll(
         addLog(mapState, `${active.name} rests, giving up the rest of the activation.`, active.side === "heroes" ? "hero" : "dm"),
         {
