@@ -1,0 +1,87 @@
+import type { DMCard } from "../types";
+
+export const dmCards: DMCard[] = [
+  {
+    id: "sudden-lunge",
+    name: "Sudden Lunge",
+    cost: 1,
+    text: "One monster moves up to 3 squares before attacking.",
+    target: "monster",
+    icon: "move-right",
+  },
+  {
+    id: "brutal-focus",
+    name: "Brutal Focus",
+    cost: 1,
+    text: "If a monster attacks Current Target, add d6 damage.",
+    target: "monster",
+    icon: "focus",
+  },
+  {
+    id: "unstable-agro",
+    name: "Unstable Agro",
+    cost: 1,
+    text: "Reduce one monster's Pressure by 1.",
+    target: "agroMonster",
+    icon: "waves",
+  },
+  {
+    id: "ignore-the-pain",
+    name: "Ignore the Pain",
+    cost: 2,
+    text: "Reduce incoming damage to one monster by d8.",
+    target: "monster",
+    icon: "shield",
+  },
+  {
+    id: "killer-instinct",
+    name: "Killer Instinct",
+    cost: 2,
+    text: "One monster may target a hero who healed this round, ignoring Current Target.",
+    target: "monster",
+    icon: "eye",
+  },
+  {
+    id: "hidden-snare",
+    name: "Hidden Snare",
+    cost: 2,
+    text: "Place a snare within 4 squares of a monster. First hero entering loses 2 AP.",
+    target: "monster",
+    icon: "scan",
+  },
+  {
+    id: "reinforced-hide",
+    name: "Reinforced Hide",
+    cost: 2,
+    text: "One monster gains +2 Defence until end of round.",
+    target: "monster",
+    icon: "shield-plus",
+  },
+  {
+    id: "dark-command",
+    name: "Dark Command",
+    cost: 3,
+    text: "One monster gains +2 AP.",
+    target: "monster",
+    icon: "crown",
+  },
+  {
+    id: "roaring-threat",
+    name: "Roaring Threat",
+    cost: 1,
+    text: "One monster sets Current Target to nearest adjacent hero at Pressure 1.",
+    target: "agroMonster",
+    icon: "megaphone",
+  },
+  {
+    id: "blood-price",
+    name: "Blood Price",
+    cost: 0,
+    trigger: "Monster is defeated",
+    text: "Gain 2 Doom.",
+    target: "none",
+    icon: "droplet",
+  },
+];
+
+export const dmCardById = Object.fromEntries(dmCards.map((card) => [card.id, card]));
