@@ -19,6 +19,110 @@ const classTooltip: Record<string, string> = {
   cleric: "Cleric / Healer deck: restores HP, revives downed heroes, cleanses, and buffs allies.",
 };
 
+const classIcon: Record<string, string> = {
+  guardian: "helm",
+  berserker: "axe",
+  ranger: "bow",
+  cleric: "sun",
+};
+
+const cardTypeIcon: Record<string, string> = {
+  Attack: "swords",
+  Defence: "shield",
+  Heal: "heart-plus",
+  Buff: "sparkles",
+  "Crowd Control": "pin",
+  Reaction: "route",
+  Utility: "gem",
+  Ultimate: "sun",
+};
+
+const heroFallbackFlavor: Record<string, string> = {
+  guardian: "Iron answers first, and the oath follows.",
+  berserker: "The dark waits for one more reckless step.",
+  ranger: "A breath, a line, and a promise loosed in silence.",
+  cleric: "A thin gold thread holds back the grave.",
+};
+
+const heroFlavorById: Record<string, string> = {
+  "guardian-taunt": "A raised shield is sometimes louder than a war horn.",
+  "guardian-shield-bash": "Steel meets bone with a chapel-bell crack.",
+  "guardian-intercept": "The Guardian arrives where the blow was meant to land.",
+  "guardian-challenge": "One name, spoken clearly, can chain a monster's fury.",
+  "guardian-brace": "Set your feet. Let the dungeon break itself on you.",
+  "guardian-shield-wall": "The line holds because someone decides it must.",
+  "guardian-immovable-object": "Some doors close. Some heroes simply do not move.",
+  "berserker-power-strike": "The axe falls with the weight of every bad decision.",
+  "berserker-reckless-strike": "A beautiful mistake, if it lands.",
+  "berserker-blood-rush": "Pain becomes pace; pace becomes violence.",
+  "berserker-furious-momentum": "Victory is only useful if it carries you forward.",
+  "berserker-controlled-strike": "Fury, folded down to a razor edge.",
+  "berserker-execute": "The wounded hear the axe before they see it.",
+  "berserker-red-ruin": "Two red arcs. One silence afterward.",
+  "ranger-aimed-shot": "Even in torch smoke, the Ranger finds the heart of the thing.",
+  "ranger-quick-shot": "Fast enough to matter, quiet enough to survive.",
+  "ranger-disengage": "Leave only boot dust and a fading curse.",
+  "ranger-pinning-shot": "An arrow in the right place turns charge into crawl.",
+  "ranger-hunters-mark": "A whisper tied to the target's shadow.",
+  "ranger-vanish": "The dungeon blinks, and the Ranger is elsewhere.",
+  "ranger-rain-of-arrows": "The ceiling becomes a storm of black feathers.",
+  "cleric-heal": "Warmth gathers where the blood should stop.",
+  "cleric-sanctuary": "The light does not ask permission to stand between you and death.",
+  "cleric-emergency-mend": "A prayer said quickly still reaches the sun.",
+  "cleric-divine-intervention": "The grave closes its hand around nothing.",
+  "cleric-cleanse": "Corruption burns away like frost on bronze.",
+  "cleric-blessing": "A small mercy, sharp enough to win the moment.",
+  "cleric-radiant-burst": "The room remembers what dawn felt like.",
+};
+
+const monsterActionFlavor: Record<string, string> = {
+  move: "Stone scrapes under claw, boot, and dragging chain.",
+  "club-strike": "A crude swing with enough force to cave in a shield.",
+  "sweeping-blow": "The brute turns the room into a weapon.",
+  roar: "The sound reaches the bones before the ears.",
+  "smash-forward": "Momentum gathers like a collapsing wall.",
+  "shadow-bolt": "A black spark leaps from a prayer said backwards.",
+  "dark-mend": "Old wounds knit with stolen heat.",
+  hex: "The priest marks a soul with a crooked sign.",
+  ritual: "The air thickens as the circle drinks another heartbeat.",
+  bite: "Teeth flash low, fast, and hungry.",
+  pounce: "The hound is a blur of ember eyes and hooked claws.",
+  harry: "It bites, vanishes, and dares you to turn away.",
+};
+
+function heroFlavor(card: HeroCard) {
+  return card.flavor ?? heroFlavorById[card.id] ?? heroFallbackFlavor[card.classId] ?? "An old tactic, sharpened for desperate rooms.";
+}
+
+function monsterFlavor(action: MonsterAction) {
+  return action.flavor ?? monsterActionFlavor[action.id] ?? "The dungeon answers with iron, hunger, and spite.";
+}
+
+function CardEmblemStrip({
+  primaryIcon,
+  primaryTooltip,
+  secondaryIcon,
+  secondaryTooltip,
+  tone = "hero",
+}: {
+  primaryIcon: string;
+  primaryTooltip: string;
+  secondaryIcon: string;
+  secondaryTooltip: string;
+  tone?: string;
+}) {
+  return (
+    <div className={`card-emblem-strip ${tone}`}>
+      <span className="card-emblem card-emblem-primary" data-tooltip={primaryTooltip} title={primaryTooltip}>
+        <FantasyIcon name={primaryIcon} className="h-4 w-4" />
+      </span>
+      <span className="card-emblem card-emblem-secondary" data-tooltip={secondaryTooltip} title={secondaryTooltip}>
+        <FantasyIcon name={secondaryIcon} className="h-3.5 w-3.5" />
+      </span>
+    </div>
+  );
+}
+
 export function HeroGameCard({
   card,
   selected,
@@ -34,6 +138,9 @@ export function HeroGameCard({
 }) {
   const [focused, setFocused] = useState(false);
   const [flipped, setFlipped] = useState(false);
+  const flavor = heroFlavor(card);
+  const heroDeckIcon = classIcon[card.classId] ?? card.icon;
+  const typeIcon = cardTypeIcon[card.type] ?? card.icon;
   const cardTooltip = `${card.name}: ${card.type}. Costs ${card.cost} AP, range ${card.range}, level ${card.level}. ${card.text}`;
   const handleClick = () => {
     if (focusOnSelectedClick) {
@@ -63,7 +170,7 @@ export function HeroGameCard({
         onClick={handleClick}
         title={disabled ? "Not enough AP or no active hero" : cardTooltip}
         data-tooltip={disabled ? `Cannot play ${card.name}: not enough AP or no active hero.` : cardTooltip}
-        className={`game-card relative flex h-44 min-w-36 max-w-40 flex-col overflow-hidden rounded-lg border bg-gradient-to-br p-3 text-left shadow-card transition ${
+        className={`game-card relative flex h-48 min-w-40 max-w-44 flex-col overflow-hidden rounded-lg border bg-gradient-to-br p-3 text-left shadow-card transition ${
           classFrame[card.classId]
         } ${selected ? "ring-2 ring-ember shadow-glow" : ""} ${disabled ? "opacity-45 grayscale" : ""}`}
       >
@@ -71,6 +178,13 @@ export function HeroGameCard({
           <strong>{card.cost}</strong>
           <span>AP</span>
         </div>
+        <CardEmblemStrip
+          primaryIcon={heroDeckIcon}
+          primaryTooltip={classTooltip[card.classId]}
+          secondaryIcon={typeIcon}
+          secondaryTooltip={`${card.type}: ${card.text}`}
+          tone={card.classId}
+        />
         <div className="absolute inset-x-0 top-0 h-16 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,.22),transparent_65%)]" />
         <div className="relative mb-2 h-16 overflow-hidden rounded-md border border-white/10 bg-black/25">
           <CardArtwork deck={card.classId} icon={card.icon} compact />
@@ -78,12 +192,14 @@ export function HeroGameCard({
         <div className="relative flex items-start justify-between gap-2">
           <div>
             <div className="font-display text-sm font-bold leading-tight text-amber-50">{card.name}</div>
-            <div className="mt-1 inline-flex rounded-sm border border-amber-100/20 bg-black/30 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-200" data-tooltip={`${card.type}: ${card.text}`}>
-              {card.type}
+            <div className="card-type-pictogram" data-tooltip={`${card.type}: ${card.text}`} title={`${card.type}: ${card.text}`}>
+              <FantasyIcon name={typeIcon} className="h-3.5 w-3.5" />
+              <span className="sr-only">{card.type}</span>
             </div>
           </div>
         </div>
-        <p className="relative mt-2 line-clamp-4 text-[11px] leading-snug text-stone-200/90">{card.text}</p>
+        <p className="card-flavor">{flavor}</p>
+        <p className="relative mt-1.5 line-clamp-3 text-[11px] leading-snug text-stone-200/90">{card.text}</p>
         <div className="mt-auto flex items-center justify-between pt-2 text-[10px] uppercase tracking-[0.18em] text-amber-100/80">
           <span data-tooltip={`AP cost: ${card.cost}.`}>{card.cost} AP</span>
           <span data-tooltip={`Level requirement: hero must know this level ${card.level} card.`}>Lv {card.level}</span>
@@ -97,6 +213,7 @@ export function HeroGameCard({
           subtitleTooltip={classTooltip[card.classId]}
           icon={card.icon}
           text={card.text}
+          flavor={flavor}
           deck={card.classId}
           cost={card.cost}
           resourceLabel="AP"
@@ -124,6 +241,7 @@ export function DMGameCard({
 }) {
   const [focused, setFocused] = useState(false);
   const [flipped, setFlipped] = useState(false);
+  const flavor = "A black-edged tactic drawn from the dungeon's waiting hand.";
   const cardTooltip = `${card.name}: Dungeon card. Costs ${card.cost} Doom. ${card.trigger ? `${card.trigger}. ` : ""}${card.text}`;
   const handleClick = () => {
     if (focusOnSelectedClick) {
@@ -178,6 +296,7 @@ export function DMGameCard({
           subtitleTooltip="Dungeon deck: dark tactics, monster tricks, traps, Doom spending, and threat manipulation."
           icon={card.icon}
           text={card.text}
+          flavor={flavor}
           deck="dm"
           cost={card.cost}
           resourceLabel="Doom"
@@ -205,6 +324,7 @@ export function MonsterActionCard({
 }) {
   const [focused, setFocused] = useState(false);
   const [flipped, setFlipped] = useState(false);
+  const flavor = monsterFlavor(action);
   const actionTooltip = `${action.name}: Monster action. Costs ${action.cost} AP, range ${action.range}. ${action.text}`;
   const handleClick = () => {
     if (focusOnSelectedClick) {
@@ -234,7 +354,7 @@ export function MonsterActionCard({
         onClick={handleClick}
         title={disabled ? "Not enough AP" : actionTooltip}
         data-tooltip={disabled ? `Cannot use ${action.name}: this monster does not have ${action.cost} AP.` : actionTooltip}
-        className={`game-card monster-action-card relative flex h-44 min-w-36 max-w-40 flex-col overflow-hidden rounded-lg border border-red-300/35 bg-gradient-to-br from-red-800/45 via-stone-950 to-fuchsia-950 p-3 text-left shadow-card transition ${
+        className={`game-card monster-action-card relative flex h-48 min-w-40 max-w-44 flex-col overflow-hidden rounded-lg border border-red-300/35 bg-gradient-to-br from-red-800/45 via-stone-950 to-fuchsia-950 p-3 text-left shadow-card transition ${
           selected ? "ring-2 ring-red-300 shadow-[0_0_28px_rgba(248,113,113,.35)]" : ""
         } ${disabled ? "opacity-45 grayscale" : ""}`}
       >
@@ -242,14 +362,23 @@ export function MonsterActionCard({
           <strong>{action.cost}</strong>
           <span>AP</span>
         </div>
+        <CardEmblemStrip
+          primaryIcon="skull"
+          primaryTooltip="Monster action deck: printed monster abilities paid with monster AP."
+          secondaryIcon={action.icon}
+          secondaryTooltip={`${action.name}: ${action.text}`}
+          tone="monster"
+        />
         <div className="relative mb-2 h-16 overflow-hidden rounded-md border border-red-100/10 bg-black/35">
           <CardArtwork deck="monster" icon={action.icon} compact />
         </div>
         <div className="font-display text-sm font-bold leading-tight text-red-50">{action.name}</div>
-        <div className="mt-1 inline-flex w-max rounded-sm border border-red-100/20 bg-black/30 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-red-200" data-tooltip="Monster Action: printed monster ability paid with that monster's AP.">
-          Monster Action
+        <div className="card-type-pictogram monster" data-tooltip="Monster Action: printed monster ability paid with that monster's AP." title="Monster Action: printed monster ability paid with that monster's AP.">
+          <FantasyIcon name={action.icon} className="h-3.5 w-3.5" />
+          <span className="sr-only">Monster Action</span>
         </div>
-        <p className="relative mt-2 line-clamp-5 text-[11px] leading-snug text-stone-200/90">{action.text}</p>
+        <p className="card-flavor monster">{flavor}</p>
+        <p className="relative mt-1.5 line-clamp-3 text-[11px] leading-snug text-stone-200/90">{action.text}</p>
         <div className="mt-auto flex items-center justify-between pt-2 text-[10px] uppercase tracking-[0.18em] text-red-100/80">
           <span data-tooltip={`AP cost: ${action.cost}.`}>AP {action.cost}</span>
           <span data-tooltip={`Range: target must be within ${action.range} square(s), if the action targets a unit.`}>R {action.range}</span>
@@ -262,6 +391,7 @@ export function MonsterActionCard({
           subtitleTooltip="Monster action: printed ability paid with monster AP."
           icon={action.icon}
           text={action.text}
+          flavor={flavor}
           deck="monster"
           cost={action.cost}
           resourceLabel="AP"
@@ -280,6 +410,7 @@ function CardFocus({
   subtitleTooltip,
   icon,
   text,
+  flavor,
   deck,
   cost,
   resourceLabel,
@@ -292,6 +423,7 @@ function CardFocus({
   subtitleTooltip?: string;
   icon: string;
   text: string;
+  flavor?: string;
   deck: string;
   cost: number;
   resourceLabel: string;
@@ -345,6 +477,7 @@ function CardFocus({
             </div>
             <div className="eyebrow" data-tooltip={subtitleTooltip ?? fantasyIconTooltip(deck)}>{subtitle}</div>
             <h3>{title}</h3>
+            {flavor && <p className="card-focus-flavor">{flavor}</p>}
             <p>{text}</p>
           </div>
           <div className="card-focus-face card-back">

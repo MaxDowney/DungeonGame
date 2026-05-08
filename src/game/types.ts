@@ -231,6 +231,7 @@ export interface HeroCard {
   attack?: AttackProfile;
   effects: CardEffect[];
   icon: string;
+  flavor?: string;
   animation: "slash" | "arrow" | "radiance" | "guard" | "shadow" | "surge";
 }
 
@@ -245,6 +246,7 @@ export interface MonsterAction {
   effects: CardEffect[];
   attack?: AttackProfile;
   icon: string;
+  flavor?: string;
 }
 
 export interface DMCard {

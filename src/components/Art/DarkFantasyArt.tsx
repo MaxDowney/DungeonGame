@@ -10,7 +10,7 @@ const palette: Record<string, { a: string; b: string; c: string; glow: string }>
   monster: { a: "#7f1d1d", b: "#13070d", c: "#fecaca", glow: "#fb7185" },
 };
 
-const iconForDeck = (deck: string, icon: string) => (deck === "dm" ? "crown" : deck === "monster" ? "skull" : icon);
+const iconForDeck = (deck: string, icon: string) => (deck === "dm" ? "crown" : icon);
 
 export function CardArtwork({
   deck,

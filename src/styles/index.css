@@ -441,6 +441,99 @@ button {
   box-shadow: 0 0 20px rgba(248,113,113,.24), inset 0 0 12px rgba(255,255,255,.08);
 }
 
+.card-emblem-strip {
+  position: absolute;
+  left: .55rem;
+  top: .55rem;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: .28rem;
+  pointer-events: auto;
+}
+
+.card-emblem {
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(254,243,199,.45);
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255,255,255,.28), transparent 28%),
+    rgba(8,7,10,.74);
+  color: #fff7d6;
+  box-shadow: 0 0 16px rgba(245,158,11,.18), inset 0 0 10px rgba(255,255,255,.08);
+}
+
+.card-emblem-primary {
+  width: 2rem;
+  height: 2rem;
+}
+
+.card-emblem-secondary {
+  width: 1.55rem;
+  height: 1.55rem;
+  opacity: .92;
+}
+
+.card-emblem-strip.guardian .card-emblem {
+  border-color: rgba(125,211,252,.46);
+  color: #bae6fd;
+  box-shadow: 0 0 16px rgba(56,189,248,.18), inset 0 0 10px rgba(255,255,255,.08);
+}
+
+.card-emblem-strip.berserker .card-emblem,
+.card-emblem-strip.monster .card-emblem {
+  border-color: rgba(252,165,165,.48);
+  color: #fecaca;
+  box-shadow: 0 0 16px rgba(248,113,113,.2), inset 0 0 10px rgba(255,255,255,.08);
+}
+
+.card-emblem-strip.ranger .card-emblem {
+  border-color: rgba(134,239,172,.46);
+  color: #bbf7d0;
+  box-shadow: 0 0 16px rgba(34,197,94,.18), inset 0 0 10px rgba(255,255,255,.08);
+}
+
+.card-emblem-strip.cleric .card-emblem {
+  border-color: rgba(253,230,138,.52);
+  color: #fde68a;
+  box-shadow: 0 0 18px rgba(250,204,21,.22), inset 0 0 10px rgba(255,255,255,.08);
+}
+
+.card-type-pictogram {
+  display: inline-grid;
+  width: 1.45rem;
+  height: 1.45rem;
+  place-items: center;
+  margin-top: .25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(253,230,138,.26);
+  background: rgba(0,0,0,.32);
+  color: #fde68a;
+}
+
+.card-type-pictogram.monster {
+  border-color: rgba(252,165,165,.28);
+  color: #fecaca;
+}
+
+.card-flavor {
+  position: relative;
+  margin-top: .4rem;
+  border-left: 2px solid rgba(253,230,138,.32);
+  padding-left: .45rem;
+  color: rgba(254,243,199,.78);
+  font-family: Georgia, serif;
+  font-size: .64rem;
+  font-style: italic;
+  line-height: 1.18;
+}
+
+.card-flavor.monster {
+  border-left-color: rgba(252,165,165,.32);
+  color: rgba(254,226,226,.78);
+}
+
 .card-focus-overlay {
   position: fixed;
   inset: 0;
@@ -538,6 +631,18 @@ button {
   font-size: clamp(.78rem, 1.6vh, 1rem);
   line-height: 1.42;
   overflow: auto;
+}
+
+.card-focus-face .card-focus-flavor {
+  margin: 0 0 clamp(.35rem, 1vh, .65rem);
+  border-left: 3px solid rgba(253,230,138,.38);
+  padding-left: .7rem;
+  color: rgba(254,243,199,.8);
+  font-family: Georgia, serif;
+  font-size: clamp(.82rem, 1.65vh, 1.05rem);
+  font-style: italic;
+  line-height: 1.28;
+  overflow: visible;
 }
 
 .card-focus-cost {
