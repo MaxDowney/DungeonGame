@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { CardArtwork } from "../Art/DarkFantasyArt";
-import { FantasyIcon } from "../../assets/generatedIcons";
+import { FantasyIcon, fantasyIconTooltip } from "../../assets/generatedIcons";
 import type { DMCard, HeroCard, MonsterAction } from "../../game/types";
 
 const classFrame: Record<string, string> = {
@@ -10,6 +10,13 @@ const classFrame: Record<string, string> = {
   berserker: "from-red-500/40 via-stone-950 to-red-950 border-red-300/45",
   ranger: "from-emerald-500/35 via-stone-950 to-emerald-950 border-emerald-300/45",
   cleric: "from-amber-300/40 via-stone-950 to-yellow-950 border-amber-200/55",
+};
+
+const classTooltip: Record<string, string> = {
+  guardian: "Guardian / Tank deck: protects allies, manipulates Current Target, and builds Pressure with Hold.",
+  berserker: "Berserker / Melee DPS deck: spends AP for heavy adjacent attacks and higher Pull.",
+  ranger: "Ranger / Ranged DPS deck: long-range precision attacks with Accuracy and Critical bonuses.",
+  cleric: "Cleric / Healer deck: restores HP, revives downed heroes, cleanses, and buffs allies.",
 };
 
 export function HeroGameCard({
@@ -27,6 +34,7 @@ export function HeroGameCard({
 }) {
   const [focused, setFocused] = useState(false);
   const [flipped, setFlipped] = useState(false);
+  const cardTooltip = `${card.name}: ${card.type}. Costs ${card.cost} AP, range ${card.range}, level ${card.level}. ${card.text}`;
   const handleClick = () => {
     if (focusOnSelectedClick) {
       if (selected) {
@@ -53,12 +61,13 @@ export function HeroGameCard({
         transition={{ type: "spring", stiffness: 420, damping: 24 }}
         style={{ transformPerspective: 950, transformStyle: "preserve-3d" }}
         onClick={handleClick}
-        title={disabled ? "Not enough AP or no active hero" : card.text}
+        title={disabled ? "Not enough AP or no active hero" : cardTooltip}
+        data-tooltip={disabled ? `Cannot play ${card.name}: not enough AP or no active hero.` : cardTooltip}
         className={`game-card relative flex h-44 min-w-36 max-w-40 flex-col overflow-hidden rounded-lg border bg-gradient-to-br p-3 text-left shadow-card transition ${
           classFrame[card.classId]
         } ${selected ? "ring-2 ring-ember shadow-glow" : ""} ${disabled ? "opacity-45 grayscale" : ""}`}
       >
-        <div className="card-cost-gem hero-cost">
+        <div className="card-cost-gem hero-cost" data-tooltip={`AP cost: ${card.cost}. You must spend this many Action Points to play ${card.name}.`}>
           <strong>{card.cost}</strong>
           <span>AP</span>
         </div>
@@ -69,22 +78,23 @@ export function HeroGameCard({
         <div className="relative flex items-start justify-between gap-2">
           <div>
             <div className="font-display text-sm font-bold leading-tight text-amber-50">{card.name}</div>
-            <div className="mt-1 inline-flex rounded-sm border border-amber-100/20 bg-black/30 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-200">
+            <div className="mt-1 inline-flex rounded-sm border border-amber-100/20 bg-black/30 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-200" data-tooltip={`${card.type}: ${card.text}`}>
               {card.type}
             </div>
           </div>
         </div>
         <p className="relative mt-2 line-clamp-4 text-[11px] leading-snug text-stone-200/90">{card.text}</p>
         <div className="mt-auto flex items-center justify-between pt-2 text-[10px] uppercase tracking-[0.18em] text-amber-100/80">
-          <span>{card.cost} AP</span>
-          <span>Lv {card.level}</span>
-          <span>R {card.range}</span>
+          <span data-tooltip={`AP cost: ${card.cost}.`}>{card.cost} AP</span>
+          <span data-tooltip={`Level requirement: hero must know this level ${card.level} card.`}>Lv {card.level}</span>
+          <span data-tooltip={`Range: can target within ${card.range} square(s), using line of sight if the card requires it.`}>R {card.range}</span>
         </div>
       </motion.button>
       {focused && (
         <CardFocus
           title={card.name}
           subtitle={`${card.classId} ${card.type}`}
+          subtitleTooltip={classTooltip[card.classId]}
           icon={card.icon}
           text={card.text}
           deck={card.classId}
@@ -114,6 +124,7 @@ export function DMGameCard({
 }) {
   const [focused, setFocused] = useState(false);
   const [flipped, setFlipped] = useState(false);
+  const cardTooltip = `${card.name}: Dungeon card. Costs ${card.cost} Doom. ${card.trigger ? `${card.trigger}. ` : ""}${card.text}`;
   const handleClick = () => {
     if (focusOnSelectedClick) {
       if (selected) {
@@ -140,12 +151,13 @@ export function DMGameCard({
         transition={{ type: "spring", stiffness: 420, damping: 24 }}
         style={{ transformPerspective: 950, transformStyle: "preserve-3d" }}
         onClick={handleClick}
-        title={disabled ? "Not enough Doom or play limit reached" : card.text}
+        title={disabled ? "Not enough Doom or play limit reached" : cardTooltip}
+        data-tooltip={disabled ? `Cannot play ${card.name}: not enough Doom or the Dungeon card limit is spent.` : cardTooltip}
         className={`game-card relative flex h-44 min-w-36 max-w-40 flex-col overflow-hidden rounded-lg border border-fuchsia-300/35 bg-gradient-to-br from-fuchsia-800/45 via-stone-950 to-red-950 p-3 text-left shadow-card transition ${
           selected ? "ring-2 ring-fuchsia-300 shadow-[0_0_28px_rgba(217,70,239,.35)]" : ""
         } ${disabled ? "opacity-45 grayscale" : ""}`}
       >
-        <div className="card-cost-gem doom-cost">
+        <div className="card-cost-gem doom-cost" data-tooltip={`Doom cost: ${card.cost}. Doom is the Dungeon Master's temporary map resource.`}>
           <strong>{card.cost}</strong>
           <span>Doom</span>
         </div>
@@ -153,16 +165,17 @@ export function DMGameCard({
           <CardArtwork deck="dm" icon={card.icon} compact />
         </div>
         <div className="font-display text-sm font-bold leading-tight text-fuchsia-50">{card.name}</div>
-        {card.trigger && <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-red-200">{card.trigger}</div>}
+        {card.trigger && <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-red-200" data-tooltip={`Trigger: when this card can be played. ${card.trigger}`}>{card.trigger}</div>}
         <p className="relative mt-2 line-clamp-5 text-[11px] leading-snug text-stone-200/90">{card.text}</p>
         <div className="mt-auto pt-2 text-[10px] uppercase tracking-[0.18em] text-fuchsia-100/80">
-          {card.cost} Doom
+          <span data-tooltip={`Doom cost: ${card.cost}.`}>{card.cost} Doom</span>
         </div>
       </motion.button>
       {focused && (
         <CardFocus
           title={card.name}
           subtitle="Dungeon card"
+          subtitleTooltip="Dungeon deck: dark tactics, monster tricks, traps, Doom spending, and threat manipulation."
           icon={card.icon}
           text={card.text}
           deck="dm"
@@ -192,6 +205,7 @@ export function MonsterActionCard({
 }) {
   const [focused, setFocused] = useState(false);
   const [flipped, setFlipped] = useState(false);
+  const actionTooltip = `${action.name}: Monster action. Costs ${action.cost} AP, range ${action.range}. ${action.text}`;
   const handleClick = () => {
     if (focusOnSelectedClick) {
       if (selected) {
@@ -218,12 +232,13 @@ export function MonsterActionCard({
         transition={{ type: "spring", stiffness: 420, damping: 24 }}
         style={{ transformPerspective: 950, transformStyle: "preserve-3d" }}
         onClick={handleClick}
-        title={disabled ? "Not enough AP" : action.text}
+        title={disabled ? "Not enough AP" : actionTooltip}
+        data-tooltip={disabled ? `Cannot use ${action.name}: this monster does not have ${action.cost} AP.` : actionTooltip}
         className={`game-card monster-action-card relative flex h-44 min-w-36 max-w-40 flex-col overflow-hidden rounded-lg border border-red-300/35 bg-gradient-to-br from-red-800/45 via-stone-950 to-fuchsia-950 p-3 text-left shadow-card transition ${
           selected ? "ring-2 ring-red-300 shadow-[0_0_28px_rgba(248,113,113,.35)]" : ""
         } ${disabled ? "opacity-45 grayscale" : ""}`}
       >
-        <div className="card-cost-gem monster-cost">
+        <div className="card-cost-gem monster-cost" data-tooltip={`AP cost: ${action.cost}. This monster must spend this many Action Points.`}>
           <strong>{action.cost}</strong>
           <span>AP</span>
         </div>
@@ -231,19 +246,20 @@ export function MonsterActionCard({
           <CardArtwork deck="monster" icon={action.icon} compact />
         </div>
         <div className="font-display text-sm font-bold leading-tight text-red-50">{action.name}</div>
-        <div className="mt-1 inline-flex w-max rounded-sm border border-red-100/20 bg-black/30 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-red-200">
+        <div className="mt-1 inline-flex w-max rounded-sm border border-red-100/20 bg-black/30 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-red-200" data-tooltip="Monster Action: printed monster ability paid with that monster's AP.">
           Monster Action
         </div>
         <p className="relative mt-2 line-clamp-5 text-[11px] leading-snug text-stone-200/90">{action.text}</p>
         <div className="mt-auto flex items-center justify-between pt-2 text-[10px] uppercase tracking-[0.18em] text-red-100/80">
-          <span>AP {action.cost}</span>
-          <span>R {action.range}</span>
+          <span data-tooltip={`AP cost: ${action.cost}.`}>AP {action.cost}</span>
+          <span data-tooltip={`Range: target must be within ${action.range} square(s), if the action targets a unit.`}>R {action.range}</span>
         </div>
       </motion.button>
       {focused && (
         <CardFocus
           title={action.name}
           subtitle="Monster action"
+          subtitleTooltip="Monster action: printed ability paid with monster AP."
           icon={action.icon}
           text={action.text}
           deck="monster"
@@ -261,6 +277,7 @@ export function MonsterActionCard({
 function CardFocus({
   title,
   subtitle,
+  subtitleTooltip,
   icon,
   text,
   deck,
@@ -272,6 +289,7 @@ function CardFocus({
 }: {
   title: string;
   subtitle: string;
+  subtitleTooltip?: string;
   icon: string;
   text: string;
   deck: string;
@@ -318,14 +336,14 @@ function CardFocus({
           transition={{ duration: 0.45 }}
         >
           <div className="card-focus-face card-front">
-            <div className="card-focus-cost">
+            <div className="card-focus-cost" data-tooltip={`${resourceLabel} cost: ${cost}.`}>
               <strong>{cost}</strong>
               <span>{resourceLabel}</span>
             </div>
             <div className="card-focus-art">
               <CardArtwork deck={deck} icon={icon} />
             </div>
-            <div className="eyebrow">{subtitle}</div>
+            <div className="eyebrow" data-tooltip={subtitleTooltip ?? fantasyIconTooltip(deck)}>{subtitle}</div>
             <h3>{title}</h3>
             <p>{text}</p>
           </div>

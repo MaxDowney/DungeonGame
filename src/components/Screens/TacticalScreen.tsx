@@ -27,9 +27,28 @@ import {
 } from "../../game/state/store";
 import type { Unit } from "../../game/types";
 
+const tip = {
+  hp: "Health: when HP reaches 0, heroes become Downed and monsters are defeated.",
+  ap: "AP: Action Points spent on movement, attacks, cards, defence, interactions, and rest.",
+  speed: "Speed: squares moved for each Move AP. Slowed/Rooted can reduce this.",
+  dt: "DT, Defence Target: attacks hit when d20 + Accuracy + card modifier is at least this number.",
+  defense: "Defence: damage reduction after an attack hits. Separate from DT.",
+  accuracy: "Accuracy: added to d20 attack rolls before comparing against target DT.",
+  recovery: "Recovery: AP regained at round end. Rest recovers Recovery + d3 and ends activation.",
+  initiative: "Initiative: each figure rolls d10 + this bonus at the start of the round.",
+  pressure: "Pressure: 0-3 pips showing how locked a monster is onto its Current Target.",
+  currentTarget: "Current Target: the hero a monster normally must attack unless a rule or DM card overrides it.",
+  doom: "Doom: temporary Dungeon Master resource for map tactics and Dungeon cards.",
+  dread: "Dread: persistent Dungeon Master campaign resource earned between maps.",
+  glory: "Glory: hero campaign score used to track success and progression.",
+  escalation: "Escalation: map-specific threat timer advanced each round.",
+  diceTray: "Dice Tray: recent rolls and totals.",
+  log: "Game Log: rules history for moves, attacks, damage, healing, threat, and objectives.",
+};
+
 function HealthBar({ unit }: { unit: Unit }) {
   return (
-    <div className="meter hp" title="Health">
+    <div className="meter hp" title={tip.hp} data-tooltip={`${tip.hp} ${unit.name} has ${unit.hp}/${unit.maxHp} HP.`}>
       <span style={{ width: `${(unit.hp / unit.maxHp) * 100}%` }} />
     </div>
   );
@@ -57,28 +76,28 @@ function UnitPanel() {
           <div className="eyebrow">{selected.side === "heroes" ? selected.role : selected.family}</div>
           <h3 className="font-display text-2xl font-bold text-amber-100">{selected.name}</h3>
         </div>
-        <div className="rounded-md border border-amber-100/20 bg-black/35 px-2 py-1 text-xs uppercase tracking-[0.18em] text-amber-100">
+        <div className="rounded-md border border-amber-100/20 bg-black/35 px-2 py-1 text-xs uppercase tracking-[0.18em] text-amber-100" data-tooltip={`Level: campaign power tier for stats and unlocked cards. ${selected.name} is level ${selected.level}.`}>
           Lv {selected.level}
         </div>
       </div>
       <div className="mt-4 grid gap-3">
         <HealthBar unit={selected} />
         <div className="flex items-center justify-between text-sm">
-          <span className="flex items-center gap-1 text-red-100"><Heart size={14} /> {selected.hp}/{selected.maxHp}</span>
+          <span className="flex items-center gap-1 text-red-100" data-tooltip={`${tip.hp} ${selected.name} has ${selected.hp}/${selected.maxHp} HP.`}><Heart size={14} /> {selected.hp}/{selected.maxHp}</span>
           <APTokens current={selected.ap} max={selected.maxAp} />
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <span className="stat-chip"><Zap size={14} /> Speed {selected.speed}</span>
-          <span className="stat-chip"><Target size={14} /> DT {selected.dt}</span>
-          <span className="stat-chip"><Shield size={14} /> Defence {selected.defense + (selected.tempDefense ?? 0)}</span>
-          <span className="stat-chip"><Swords size={14} /> Accuracy +{selected.accuracy}</span>
-          <span className="stat-chip"><Hourglass size={14} /> Recovery {selected.recovery}</span>
-          <span className="stat-chip"><Gem size={14} /> Init +{selected.initiative}</span>
+          <span className="stat-chip" data-tooltip={tip.speed}><Zap size={14} /> Speed {selected.speed}</span>
+          <span className="stat-chip" data-tooltip={tip.dt}><Target size={14} /> DT {selected.dt}</span>
+          <span className="stat-chip" data-tooltip={tip.defense}><Shield size={14} /> Defence {selected.defense + (selected.tempDefense ?? 0)}</span>
+          <span className="stat-chip" data-tooltip={tip.accuracy}><Swords size={14} /> Accuracy +{selected.accuracy}</span>
+          <span className="stat-chip" data-tooltip={tip.recovery}><Hourglass size={14} /> Recovery {selected.recovery}</span>
+          <span className="stat-chip" data-tooltip={tip.initiative}><Gem size={14} /> Init +{selected.initiative}</span>
         </div>
         {selected.conditions.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {selected.conditions.map((condition) => (
-              <span key={condition.type} className="condition-pill" title={`${condition.duration} activation(s)`}>
+              <span key={condition.type} className="condition-pill" title={`${condition.duration} activation(s)`} data-tooltip={`${condition.type}: condition lasting ${condition.duration} activation(s).`}>
                 {condition.type}
               </span>
             ))}
@@ -86,11 +105,11 @@ function UnitPanel() {
         )}
         {selected.side === "dm" && selected.agro && (
           <div className="agro-panel">
-            <div>
+            <div data-tooltip={tip.currentTarget}>
               <span>Current Target</span>
               <strong>{target?.name ?? "Nearest visible hero"}</strong>
             </div>
-            <div className="pressure-pips" title="Pressure">
+            <div className="pressure-pips" title="Pressure" data-tooltip={tip.pressure}>
               {Array.from({ length: 3 }).map((_, index) => (
                 <i key={index} className={index < selected.agro!.pressure ? "lit" : ""} />
               ))}
@@ -130,6 +149,7 @@ function InitiativeBar({ onInspect }: { onInspect: (unitId: string) => void }) {
               onClick={() => unit && revealed && onInspect(unit.id)}
               className={`initiative-entry ${entry.side} ${played ? "played" : ""} ${current ? "current" : ""} ${removed ? "removed" : ""} ${!revealed ? "hidden" : ""}`}
               title={revealed ? `${entry.unitName}: d10 ${entry.roll} + initiative ${entry.bonus} = ${entry.total}` : "Unrevealed dungeon threat"}
+              data-tooltip={revealed ? `${entry.unitName}: initiative total ${entry.total} from d10 ${entry.roll} + ${entry.bonus}. Click to inspect full stats.` : "Unrevealed dungeon threat: hidden until heroes enter its room."}
             >
               <span className="initiative-entry__roll">{entry.total}</span>
               <span className="initiative-entry__name">{revealed ? entry.unitName.split(" ")[0] : "Threat"}</span>
@@ -194,6 +214,7 @@ function BottomPanel() {
           <div className="universal-actions">
             <button
               className={`action-button ${mapState.actionMode === "move" ? "selected" : ""}`}
+              data-tooltip={`Move: spend AP to move up to Speed squares per AP. ${active.name} has Speed ${active.speed}.`}
               onClick={() => setActionMode("move")}
               disabled={active.ap < 1}
             >
@@ -206,6 +227,7 @@ function BottomPanel() {
             </button>
             <button
               className={`action-button ${mapState.actionMode === "attack" ? "selected" : ""}`}
+              data-tooltip={`Basic Attack: costs 2 AP, rolls d20 + Accuracy vs DT, then weapon damage on hit. Weapon: ${active.weapon?.name ?? "none"}.`}
               onClick={() => setActionMode("attack")}
               disabled={active.ap < 2}
             >
@@ -216,7 +238,7 @@ function BottomPanel() {
               </span>
               <span className="action-button__cost">2 AP</span>
             </button>
-            <button className="action-button" onClick={defendActive} disabled={active.ap < 1}>
+            <button className="action-button" onClick={defendActive} disabled={active.ap < 1} data-tooltip="Defend: costs 1 AP. Adds Defence as damage reduction against the next incoming hit. If holding an adjacent monster's Current Target, adds Hold 1.">
               <span className="action-button__icon"><Shield size={16} /></span>
               <span className="action-button__copy">
                 <strong>Defend</strong>
@@ -226,6 +248,7 @@ function BottomPanel() {
             </button>
             <button
               className={`action-button ${mapState.actionMode === "interact" ? "selected" : ""}`}
+              data-tooltip="Interact: costs 1 AP. Open adjacent doors, claim relics, activate exits, or seal anchors."
               onClick={() => setActionMode("interact")}
               disabled={active.ap < 1}
             >
@@ -236,7 +259,7 @@ function BottomPanel() {
               </span>
               <span className="action-button__cost">1 AP</span>
             </button>
-            <button className="action-button rest-action" onClick={restActive}>
+            <button className="action-button rest-action" onClick={restActive} data-tooltip={`Rest: skip the rest of ${active.name}'s activation, roll d3, recover Recovery ${active.recovery} + d3 AP up to max.`}>
               <span className="action-button__icon"><Hourglass size={16} /></span>
               <span className="action-button__copy">
                 <strong>Rest</strong>
@@ -269,7 +292,7 @@ function BottomPanel() {
       ) : (
         <div className="grid gap-3">
           <div className="universal-actions monster-rest-actions">
-            <button className="action-button rest-action" onClick={restActive}>
+            <button className="action-button rest-action" onClick={restActive} data-tooltip={`Rest: skip the rest of ${active.name}'s activation, roll d3, recover Recovery ${active.recovery} + d3 AP up to max.`}>
               <span className="action-button__icon"><Hourglass size={16} /></span>
               <span className="action-button__copy">
                 <strong>Rest</strong>
@@ -326,9 +349,9 @@ function RightPanel() {
   return (
     <aside className="panel tactical-panel right-panel p-4">
       <div className="grid grid-cols-3 gap-2">
-        <div className="resource doom"><span>Doom</span><strong>{mapState.doom}</strong></div>
-        <div className="resource dread"><span>Dread</span><strong>{campaign.dread}</strong></div>
-        <div className="resource glory"><span>Glory</span><strong>{campaign.glory}</strong></div>
+        <div className="resource doom" data-tooltip={tip.doom}><span>Doom</span><strong>{mapState.doom}</strong></div>
+        <div className="resource dread" data-tooltip={tip.dread}><span>Dread</span><strong>{campaign.dread}</strong></div>
+        <div className="resource glory" data-tooltip={tip.glory}><span>Glory</span><strong>{campaign.glory}</strong></div>
       </div>
       <div className="mt-4 rounded-md border border-amber-100/15 bg-black/25 p-3">
         <div className="flex items-center justify-between text-sm">
@@ -341,7 +364,7 @@ function RightPanel() {
         {map.escalation && (
           <div className="mt-3">
             <div className="mb-1 flex justify-between text-xs text-stone-300">
-              <span>{map.escalation.label}</span>
+              <span data-tooltip={tip.escalation}>{map.escalation.label}</span>
               <span>{mapState.escalation}/{map.escalation.max}</span>
             </div>
             <div className="meter doom-meter">
@@ -379,7 +402,7 @@ function RightPanel() {
         </button>
       </div>
       <div className="mt-4">
-        <div className="eyebrow">Dice Tray</div>
+        <div className="eyebrow" data-tooltip={tip.diceTray}>Dice Tray</div>
         <div className="dice-tray">
           {mapState.diceTray.map((roll) => (
             <motion.div key={roll.id} className="die-roll" initial={{ rotate: -6, scale: 0.8 }} animate={{ rotate: 0, scale: 1 }}>
@@ -391,7 +414,7 @@ function RightPanel() {
         </div>
       </div>
       <div className="mt-4 min-h-0">
-        <div className="eyebrow">Game Log</div>
+        <div className="eyebrow" data-tooltip={tip.log}>Game Log</div>
         <div className="game-log">
           {mapState.log.map((entry) => (
             <div key={entry.id} className={`log-entry ${entry.tone}`}>
@@ -642,22 +665,22 @@ function UnitInspectOverlay({
         </div>
         <HealthBar unit={unit} />
         <div className="unit-inspect-vitals">
-          <span><Heart size={15} /> {unit.hp}/{unit.maxHp} HP</span>
-          <span><Zap size={15} /> {unit.ap}/{unit.maxAp} AP</span>
-          <span><Gem size={15} /> Level {unit.level}</span>
+          <span data-tooltip={tip.hp}><Heart size={15} /> {unit.hp}/{unit.maxHp} HP</span>
+          <span data-tooltip={tip.ap}><Zap size={15} /> {unit.ap}/{unit.maxAp} AP</span>
+          <span data-tooltip="Level: campaign power tier for stats and unlocked cards."><Gem size={15} /> Level {unit.level}</span>
         </div>
         <div className="unit-inspect-stats">
-          <span>Recovery <strong>{unit.recovery}</strong></span>
-          <span>Speed <strong>{unit.speed}</strong></span>
-          <span>DT <strong>{unit.dt}</strong></span>
-          <span>Defence <strong>{unit.defense + (unit.tempDefense ?? 0)}</strong></span>
-          <span>Initiative <strong>{unit.initiative >= 0 ? `+${unit.initiative}` : unit.initiative}</strong></span>
-          <span>Accuracy <strong>{unit.accuracy >= 0 ? `+${unit.accuracy}` : unit.accuracy}</strong></span>
-          <span>Power <strong>{unit.power}</strong></span>
-          <span>Position <strong>{unit.position.x + 1},{unit.position.y + 1}</strong></span>
+          <span data-tooltip={tip.recovery}>Recovery <strong>{unit.recovery}</strong></span>
+          <span data-tooltip={tip.speed}>Speed <strong>{unit.speed}</strong></span>
+          <span data-tooltip={tip.dt}>DT <strong>{unit.dt}</strong></span>
+          <span data-tooltip={tip.defense}>Defence <strong>{unit.defense + (unit.tempDefense ?? 0)}</strong></span>
+          <span data-tooltip={tip.initiative}>Initiative <strong>{unit.initiative >= 0 ? `+${unit.initiative}` : unit.initiative}</strong></span>
+          <span data-tooltip={tip.accuracy}>Accuracy <strong>{unit.accuracy >= 0 ? `+${unit.accuracy}` : unit.accuracy}</strong></span>
+          <span data-tooltip="Power: added to healing and some class effects.">Power <strong>{unit.power}</strong></span>
+          <span data-tooltip="Position: current board coordinates, shown as column,row.">Position <strong>{unit.position.x + 1},{unit.position.y + 1}</strong></span>
         </div>
         {unit.weapon && (
-          <div className="unit-inspect-section">
+          <div className="unit-inspect-section" data-tooltip="Weapon: die and range used by Basic Attack and weapon-based class cards.">
             <strong>Weapon</strong>
             <span>{unit.weapon.name}: {unit.weapon.die}, Range {unit.weapon.range}</span>
           </div>
@@ -665,12 +688,12 @@ function UnitInspectOverlay({
         {unit.conditions.length > 0 && (
           <div className="unit-inspect-tags">
             {unit.conditions.map((condition) => (
-              <span key={condition.type}>{condition.type} {condition.duration}</span>
+              <span key={condition.type} data-tooltip={`${condition.type}: condition lasting ${condition.duration} activation(s).`}>{condition.type} {condition.duration}</span>
             ))}
           </div>
         )}
         {unit.side === "dm" && unit.agro && (
-          <div className="unit-inspect-section">
+          <div className="unit-inspect-section" data-tooltip={`${tip.currentTarget} ${tip.pressure}`}>
             <strong>Threat</strong>
             <span>Current Target: {target?.name ?? "Nearest visible hero"}</span>
             <div className="pressure-pips" title="Pressure">
@@ -683,7 +706,7 @@ function UnitInspectOverlay({
         {monsterActions.length > 0 && (
           <div className="unit-inspect-actions">
             {monsterActions.map((action) => (
-              <div key={action.id}>
+              <div key={action.id} data-tooltip={`${action.name}: costs ${action.cost} AP, range ${action.range}. ${action.text}`}>
                 <strong>{action.name}</strong>
                 <span>{action.cost} AP, R{action.range}</span>
                 <p>{action.text}</p>

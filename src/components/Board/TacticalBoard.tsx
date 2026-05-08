@@ -25,6 +25,23 @@ const tileTitle = (tile: Tile) =>
       ? `${tile.label} (${tile.type})`
       : tile.type.replace("-", " ");
 
+const tileTooltip = (tile: Tile): string => {
+  if (!tile.revealed) return "Unexplored: this room or corridor is hidden until a hero enters or opens the way.";
+  const name = tile.label ? `${tile.label}: ` : "";
+  const text: Record<string, string> = {
+    floor: "Floor: normal walkable tile.",
+    door: tile.open ? "Open Door: movement can pass through." : "Closed Door: interact adjacent to open it.",
+    trap: "Trap: dangerous tile. Heroes may lose AP or trigger dungeon effects.",
+    difficult: "Difficult Terrain: movement may be slowed by future rules.",
+    altar: "Altar Objective: interact to claim or activate the map objective.",
+    objective: "Objective: interact or stand here when the map rules require it.",
+    exit: "Exit: bring the relic carrier here and interact/escape as required.",
+    portal: "Portal Objective: scenario threat source.",
+    anchor: "Anchor Objective: interact to seal it.",
+  };
+  return `${name}${text[tile.type] ?? tile.type}`;
+};
+
 const canShowTileSurface = (tile: Tile): boolean => tile.type !== "void" && tile.type !== "wall";
 
 export function TacticalBoard() {
@@ -166,6 +183,7 @@ export function TacticalBoard() {
                 key={key}
                 type="button"
                 title={tileTitle(tile)}
+                data-tooltip={tileTooltip(tile)}
                 onClick={() => canShowTileSurface(tile) && boardClick(tile)}
                 className={`board-tile ${visibleType} ${tileShape} ${edgeClasses(tile)} ${tile.open ? "open" : ""} ${isReachable ? "reachable" : ""} ${
                   isTarget ? "targetable" : ""

@@ -7,6 +7,7 @@ import { HeroLoadoutScreen } from "./components/Screens/HeroLoadoutScreen";
 import { ResolutionScreen } from "./components/Screens/ResolutionScreen";
 import { TacticalScreen } from "./components/Screens/TacticalScreen";
 import { TitleScreen } from "./components/Screens/TitleScreen";
+import { GlobalTooltip } from "./components/GlobalTooltip";
 import { RulebookOverlay } from "./components/RulebookOverlay";
 import { useGameStore } from "./game/state/store";
 
@@ -50,16 +51,16 @@ export function App() {
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_30%_10%,rgba(183,131,59,.22),transparent_32%),radial-gradient(circle_at_82%_18%,rgba(139,28,49,.2),transparent_30%),linear-gradient(180deg,#151217,#09080b)]" />
       <div className="fixed inset-0 opacity-30 mix-blend-screen fantasy-noise" />
       <div className="fixed right-4 top-4 z-50 flex gap-2">
-        <button className="icon-button" title="Save game" onClick={saveGame}>
+        <button className="icon-button" title="Save game" data-tooltip="Save the current campaign and tactical state to this browser." onClick={saveGame}>
           <Save size={18} />
         </button>
-        <button className="icon-button" title="Rulebook" onClick={toggleHelp}>
+        <button className="icon-button" title="Rulebook" data-tooltip="Open the quick rulebook: AP, Pressure, Doom, campaign rewards, and keywords." onClick={toggleHelp}>
           <BookOpen size={18} />
         </button>
-        <button className="icon-button" title="Toggle debug tools" onClick={toggleDebug}>
+        <button className="icon-button" title="Toggle debug tools" data-tooltip="Show or hide developer test controls for fast prototype iteration." onClick={toggleDebug}>
           <Bug size={18} />
         </button>
-        <button className="icon-button" title="Settings">
+        <button className="icon-button" title="Settings" data-tooltip="Settings placeholder for future audio, animation, and accessibility options.">
           <Settings size={18} />
         </button>
       </div>
@@ -79,6 +80,7 @@ export function App() {
         </AnimatePresence>
       </main>
       <AnimatePresence>{helpOpen && <RulebookOverlay />}</AnimatePresence>
+      <GlobalTooltip />
     </div>
   );
 }

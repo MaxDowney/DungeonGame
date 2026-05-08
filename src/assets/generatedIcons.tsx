@@ -67,6 +67,30 @@ const iconMap: Record<string, string> = {
   hourglass: "Hourglass",
 };
 
+const tooltipMap: Record<string, string> = {
+  helm: "Guardian / Tank: defensive hero cards that protect allies, Hold threat, and control Current Target.",
+  axe: "Berserker / Melee DPS: high-damage hero cards that hit hard and usually generate more Pull.",
+  bow: "Ranger / Ranged DPS: precision hero cards with long range, Accuracy bonuses, and better critical chances.",
+  sun: "Cleric / Healer: healing and support hero cards, including revival and protective blessings.",
+  crown: "Dungeon Master card: spends Doom for traps, monster tricks, and threat manipulation.",
+  skull: "Monster action: printed monster abilities paid for with that monster's AP.",
+  shield: "Defence or guard: reduces incoming damage after an attack hits.",
+  "shield-plus": "Defensive support: adds protection, mitigation, or temporary defence.",
+  swords: "Attack: chooses a target, rolls d20 + Accuracy against DT, then rolls damage on a hit.",
+  sword: "Melee attack: close-range weapon strike.",
+  target: "Targeting: range, line of sight, DT, Current Target, or valid attack target.",
+  gem: "Resource or initiative marker. Check the label beside it for AP, Doom, Glory, Dread, or initiative.",
+  hourglass: "Recovery or Rest: AP gained at round end, or Recovery + d3 when resting.",
+  zap: "AP or Speed: action fuel, movement allowance, or fast movement.",
+  heart: "Health: current HP and maximum HP.",
+  door: "Interact: open doors or use adjacent objectives.",
+  dice: "Manual dice: roll the shown die expression to resolve the pending effect.",
+  scroll: "Rules, narration, or room text.",
+};
+
+export const fantasyIconTooltip = (name: string): string =>
+  tooltipMap[name] ?? tooltipMap[name.toLowerCase()] ?? `${name}: game icon. Hover nearby labels for exact rules.`;
+
 export const FantasyIcon = ({
   name,
   className,

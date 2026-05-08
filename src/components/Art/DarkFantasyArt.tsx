@@ -1,4 +1,4 @@
-import { FantasyIcon } from "../../assets/generatedIcons";
+import { FantasyIcon, fantasyIconTooltip } from "../../assets/generatedIcons";
 import type { CSSProperties } from "react";
 
 const palette: Record<string, { a: string; b: string; c: string; glow: string }> = {
@@ -23,8 +23,14 @@ export function CardArtwork({
 }) {
   const colors = palette[deck] ?? palette.dm;
   const artIcon = iconForDeck(deck, icon);
+  const tooltip = fantasyIconTooltip(artIcon);
   return (
-    <div className={`dark-art ${compact ? "compact" : ""}`} style={{ "--art-a": colors.a, "--art-b": colors.b, "--art-c": colors.c, "--art-glow": colors.glow } as CSSProperties}>
+    <div
+      className={`dark-art ${compact ? "compact" : ""}`}
+      style={{ "--art-a": colors.a, "--art-b": colors.b, "--art-c": colors.c, "--art-glow": colors.glow } as CSSProperties}
+      data-tooltip={tooltip}
+      title={tooltip}
+    >
       <svg viewBox="0 0 320 220" role="img" aria-label={`${deck} fantasy card art`}>
         <defs>
           <radialGradient id={`moon-${deck}-${icon}`} cx="50%" cy="25%" r="55%">
@@ -56,7 +62,7 @@ export function CardArtwork({
         <path d="M158 37 L198 173 L158 154 L118 173 Z" fill={colors.glow} opacity="0.16" />
         <rect width="320" height="220" rx="18" filter={`url(#rough-${deck}-${icon})`} />
       </svg>
-      <div className="dark-art__sigil">
+      <div className="dark-art__sigil" data-tooltip={tooltip} title={tooltip}>
         <FantasyIcon name={artIcon} className={compact ? "h-8 w-8" : "h-16 w-16"} />
       </div>
     </div>
@@ -64,8 +70,9 @@ export function CardArtwork({
 }
 
 export function TokenArtwork({ unitIcon, side }: { unitIcon: string; side: "heroes" | "dm" }) {
+  const tooltip = fantasyIconTooltip(unitIcon);
   return (
-    <div className={`token-art ${side}`}>
+    <div className={`token-art ${side}`} data-tooltip={tooltip} title={tooltip}>
       <svg viewBox="0 0 80 80" aria-hidden="true">
         <path d="M40 6 C55 14 65 27 66 43 C67 60 56 72 40 76 C24 72 13 60 14 43 C15 27 25 14 40 6 Z" />
         <path d="M25 54 C31 40 49 40 55 54 C50 61 30 61 25 54 Z" />

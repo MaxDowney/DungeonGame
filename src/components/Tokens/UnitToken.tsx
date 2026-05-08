@@ -15,6 +15,7 @@ export function UnitToken({
   validTarget?: boolean;
 }) {
   const hpPercent = Math.max(0, (unit.hp / unit.maxHp) * 100);
+  const tooltip = `${unit.name}: ${unit.side === "heroes" ? unit.role : unit.family}. HP ${unit.hp}/${unit.maxHp}, AP ${unit.ap}/${unit.maxAp}, DT ${unit.dt}, Defence ${unit.defense}, Accuracy ${unit.accuracy >= 0 ? "+" : ""}${unit.accuracy}.`;
   return (
     <motion.div
       layout
@@ -23,7 +24,8 @@ export function UnitToken({
       transition={{ type: "spring", stiffness: 420, damping: 28 }}
       className={`unit-token ${unit.side} ${active ? "active" : ""} ${selected ? "selected" : ""} ${validTarget ? "valid-target" : ""}`}
       style={{ "--unit-color": unit.color } as CSSProperties}
-      title={`${unit.name}: ${unit.hp}/${unit.maxHp} HP, ${unit.ap}/${unit.maxAp} AP`}
+      title={tooltip}
+      data-tooltip={tooltip}
     >
       <div className="unit-token__portrait">
         <TokenArtwork unitIcon={unit.portraitGlyph} side={unit.side} />
