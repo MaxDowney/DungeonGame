@@ -15,15 +15,30 @@ const iconForDeck = (deck: string, icon: string) => (deck === "dm" ? "crown" : i
 export function CardArtwork({
   deck,
   icon,
+  assetUrl,
   compact = false,
 }: {
   deck: string;
   icon: string;
+  assetUrl?: string;
   compact?: boolean;
 }) {
   const colors = palette[deck] ?? palette.dm;
   const artIcon = iconForDeck(deck, icon);
   const tooltip = fantasyIconTooltip(artIcon);
+  if (assetUrl) {
+    return (
+      <div
+        className={`dark-art dark-art--asset ${compact ? "compact" : ""}`}
+        style={{ "--art-a": colors.a, "--art-b": colors.b, "--art-c": colors.c, "--art-glow": colors.glow } as CSSProperties}
+        data-tooltip={tooltip}
+        title={tooltip}
+      >
+        <img src={assetUrl} alt="" />
+      </div>
+    );
+  }
+
   return (
     <div
       className={`dark-art ${compact ? "compact" : ""}`}

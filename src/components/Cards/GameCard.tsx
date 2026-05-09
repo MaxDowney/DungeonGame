@@ -19,6 +19,10 @@ const classTooltip: Record<string, string> = {
   cleric: "Cleric / Healer deck: restores HP, revives downed heroes, cleanses, and buffs allies.",
 };
 
+const assetUrl = (path: string) => `${import.meta.env.BASE_URL}${path}`;
+const cardArtUrl = (id: string) => assetUrl(`assets/cards/${id}.png`);
+const monsterActionArtId = (actionId: string) => `monster-${actionId}`;
+
 const classIcon: Record<string, string> = {
   guardian: "helm",
   berserker: "axe",
@@ -187,7 +191,7 @@ export function HeroGameCard({
         />
         <div className="absolute inset-x-0 top-0 h-16 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,.22),transparent_65%)]" />
         <div className="relative mb-2 h-16 overflow-hidden rounded-md border border-white/10 bg-black/25">
-          <CardArtwork deck={card.classId} icon={card.icon} compact />
+          <CardArtwork deck={card.classId} icon={card.icon} assetUrl={cardArtUrl(card.id)} compact />
         </div>
         <div className="relative flex items-start justify-between gap-2">
           <div>
@@ -212,6 +216,7 @@ export function HeroGameCard({
           subtitle={`${card.classId} ${card.type}`}
           subtitleTooltip={classTooltip[card.classId]}
           icon={card.icon}
+          assetUrl={cardArtUrl(card.id)}
           text={card.text}
           flavor={flavor}
           deck={card.classId}
@@ -280,7 +285,7 @@ export function DMGameCard({
           <span>Doom</span>
         </div>
         <div className="relative mb-2 h-16 overflow-hidden rounded-md border border-fuchsia-100/10 bg-black/35">
-          <CardArtwork deck="dm" icon={card.icon} compact />
+          <CardArtwork deck="dm" icon={card.icon} assetUrl={cardArtUrl(card.id)} compact />
         </div>
         <div className="font-display text-sm font-bold leading-tight text-fuchsia-50">{card.name}</div>
         {card.trigger && <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-red-200" data-tooltip={`Trigger: when this card can be played. ${card.trigger}`}>{card.trigger}</div>}
@@ -295,6 +300,7 @@ export function DMGameCard({
           subtitle="Dungeon card"
           subtitleTooltip="Dungeon deck: dark tactics, monster tricks, traps, Doom spending, and threat manipulation."
           icon={card.icon}
+          assetUrl={cardArtUrl(card.id)}
           text={card.text}
           flavor={flavor}
           deck="dm"
@@ -325,6 +331,7 @@ export function MonsterActionCard({
   const [focused, setFocused] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const flavor = monsterFlavor(action);
+  const actionArtUrl = cardArtUrl(monsterActionArtId(action.id));
   const actionTooltip = `${action.name}: Monster action. Costs ${action.cost} AP, range ${action.range}. ${action.text}`;
   const handleClick = () => {
     if (focusOnSelectedClick) {
@@ -370,7 +377,7 @@ export function MonsterActionCard({
           tone="monster"
         />
         <div className="relative mb-2 h-16 overflow-hidden rounded-md border border-red-100/10 bg-black/35">
-          <CardArtwork deck="monster" icon={action.icon} compact />
+          <CardArtwork deck="monster" icon={action.icon} assetUrl={actionArtUrl} compact />
         </div>
         <div className="font-display text-sm font-bold leading-tight text-red-50">{action.name}</div>
         <div className="card-type-pictogram monster" data-tooltip="Monster Action: printed monster ability paid with that monster's AP." title="Monster Action: printed monster ability paid with that monster's AP.">
@@ -390,6 +397,7 @@ export function MonsterActionCard({
           subtitle="Monster action"
           subtitleTooltip="Monster action: printed ability paid with monster AP."
           icon={action.icon}
+          assetUrl={actionArtUrl}
           text={action.text}
           flavor={flavor}
           deck="monster"
@@ -409,6 +417,7 @@ function CardFocus({
   subtitle,
   subtitleTooltip,
   icon,
+  assetUrl,
   text,
   flavor,
   deck,
@@ -422,6 +431,7 @@ function CardFocus({
   subtitle: string;
   subtitleTooltip?: string;
   icon: string;
+  assetUrl?: string;
   text: string;
   flavor?: string;
   deck: string;
@@ -473,7 +483,7 @@ function CardFocus({
               <span>{resourceLabel}</span>
             </div>
             <div className="card-focus-art">
-              <CardArtwork deck={deck} icon={icon} />
+              <CardArtwork deck={deck} icon={icon} assetUrl={assetUrl} />
             </div>
             <div className="eyebrow" data-tooltip={subtitleTooltip ?? fantasyIconTooltip(deck)}>{subtitle}</div>
             <h3>{title}</h3>

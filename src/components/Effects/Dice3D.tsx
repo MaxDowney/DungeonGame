@@ -29,6 +29,56 @@ const geometryFor = (sides: number) => {
   }
 };
 
+const createFaceTexture = () => {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 192;
+  return new THREE.CanvasTexture(canvas);
+};
+
+const drawFaceTexture = (
+  texture: THREE.CanvasTexture,
+  value: string | number,
+  tone: "normal" | "critical" | "danger",
+) => {
+  const canvas = texture.image as HTMLCanvasElement;
+  const context = canvas.getContext("2d");
+  if (!context) return;
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  const accent = tone === "danger" ? "#ffb4b4" : tone === "critical" ? "#fff0a5" : "#ffe7b0";
+  const shadow = tone === "danger" ? "rgba(127, 16, 32, .86)" : tone === "critical" ? "rgba(180, 108, 0, .72)" : "rgba(32, 15, 5, .78)";
+  const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+  gradient.addColorStop(0, "rgba(255,255,255,.2)");
+  gradient.addColorStop(0.42, "rgba(0,0,0,.16)");
+  gradient.addColorStop(1, "rgba(0,0,0,.44)");
+  context.fillStyle = gradient;
+  context.beginPath();
+  context.roundRect(18, 16, canvas.width - 36, canvas.height - 32, 34);
+  context.fill();
+  context.lineWidth = 8;
+  context.strokeStyle = "rgba(24, 12, 4, .86)";
+  context.stroke();
+  context.lineWidth = 3;
+  context.strokeStyle = accent;
+  context.stroke();
+
+  context.save();
+  context.translate(canvas.width / 2, canvas.height / 2 + 5);
+  context.rotate(-0.04);
+  context.font = "900 104px Georgia, serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.lineJoin = "round";
+  context.strokeStyle = shadow;
+  context.lineWidth = 13;
+  context.strokeText(String(value), 0, 0);
+  context.fillStyle = accent;
+  context.fillText(String(value), 0, 0);
+  context.restore();
+  texture.needsUpdate = true;
+};
+
 export function Dice3D({
   dice,
   value,
@@ -43,6 +93,7 @@ export function Dice3D({
   rolling?: boolean;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
+  const faceTextureRef = useRef<THREE.CanvasTexture | null>(null);
   const sides = useMemo(() => expressionSides(dice), [dice]);
   const [rollingFace, setRollingFace] = useState<string | number>(value ?? `d${sides}`);
 
@@ -59,6 +110,12 @@ export function Dice3D({
 
     return () => window.clearInterval(timer);
   }, [rolling, sides, value]);
+
+  useEffect(() => {
+    const texture = faceTextureRef.current;
+    if (!texture) return;
+    drawFaceTexture(texture, rollingFace, danger ? "danger" : critical ? "critical" : "normal");
+  }, [critical, danger, rollingFace]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -103,6 +160,22 @@ export function Dice3D({
     );
     mesh.add(edges);
 
+    const faceTexture = createFaceTexture();
+    faceTextureRef.current = faceTexture;
+    drawFaceTexture(faceTexture, rollingFace, danger ? "danger" : critical ? "critical" : "normal");
+    const faceGeometry = new THREE.PlaneGeometry(1.34, 0.98);
+    const faceMaterial = new THREE.MeshBasicMaterial({
+      map: faceTexture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const faceLabel = new THREE.Mesh(faceGeometry, faceMaterial);
+    faceLabel.position.set(0, 0, 1.24);
+    faceLabel.rotation.set(0, 0, -0.02);
+    mesh.add(faceLabel);
+
     const shadow = new THREE.Mesh(
       new THREE.CircleGeometry(1.35, 48),
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22 }),
@@ -132,6 +205,10 @@ export function Dice3D({
       cancelAnimationFrame(raf);
       geometry.dispose();
       material.dispose();
+      faceGeometry.dispose();
+      faceMaterial.dispose();
+      faceTexture.dispose();
+      faceTextureRef.current = null;
       renderer.dispose();
       mount.removeChild(renderer.domElement);
     };

@@ -51,8 +51,13 @@ const tip = {
   log: "Game Log: rules history for moves, attacks, damage, healing, threat, and objectives.",
 };
 
-const unitMatUrl = (side: Unit["side"]) =>
-  `${import.meta.env.BASE_URL}assets/mats/${side === "heroes" ? "hero-mat.png" : "monster-mat.png"}`;
+const unitAssetId = (unit: Unit) =>
+  ["guardian", "berserker", "ranger", "cleric", "ogre-brute", "cult-priest", "demon-hound"].includes(unit.templateId)
+    ? unit.templateId
+    : "dungeon-threat";
+
+const unitMatUrl = (unit: Unit) => `${import.meta.env.BASE_URL}assets/units/mats/${unitAssetId(unit)}.png`;
+const unitPortraitUrl = (unit: Unit) => `${import.meta.env.BASE_URL}assets/units/portraits/${unitAssetId(unit)}.png`;
 
 function HealthBar({ unit }: { unit: Unit }) {
   return (
@@ -860,7 +865,7 @@ function UnitInspectOverlay({
   const monsterActions = unit.side === "dm" ? monsterTemplateById[unit.templateId]?.actions ?? [] : [];
   const matStyle = {
     "--unit-color": unit.color,
-    "--unit-mat": `url("${unitMatUrl(unit.side)}")`,
+    "--unit-mat": `url("${unitMatUrl(unit)}")`,
   } as CSSProperties;
 
   return (
@@ -879,7 +884,7 @@ function UnitInspectOverlay({
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
       >
         <div className="unit-inspect-portrait">
-          <span>{unit.portraitGlyph}</span>
+          <img src={unitPortraitUrl(unit)} alt="" />
         </div>
         <div className="unit-inspect-heading">
           <div>
