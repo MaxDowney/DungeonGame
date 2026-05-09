@@ -4,6 +4,7 @@ export type Screen =
   | "campaign"
   | "heroLoadout"
   | "dmLoadout"
+  | "mapEditor"
   | "tactical"
   | "resolution";
 

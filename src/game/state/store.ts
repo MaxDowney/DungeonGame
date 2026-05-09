@@ -43,6 +43,7 @@ import type {
   GameLogEntry,
   HeroCard,
   InitiativeEntry,
+  MapDefinition,
   MapState,
   MonsterAction,
   PendingAttack,
@@ -81,6 +82,7 @@ interface GameStore {
   dismissRandomEncounter: () => void;
   toggleDebug: () => void;
   startCurrentMap: () => void;
+  startCustomMap: (map: MapDefinition) => void;
   selectUnit: (unitId: string | null) => void;
   setActionMode: (mode: MapState["actionMode"]) => void;
   selectHeroCard: (cardId: string | null) => void;
@@ -1857,6 +1859,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const mapState = withActivationStartState(refreshLineOfSight(setupMapState(normalizedCampaign)));
     saveSnapshot(normalizedCampaign, mapState, "tactical");
     set({ campaign: normalizedCampaign, mapState, screen: "tactical" });
+  },
+
+  startCustomMap: (map) => {
+    const campaign = normalizeCampaignForCurrentData(get().campaign ?? createInitialCampaign());
+    const mapState = withActivationStartState(refreshLineOfSight(setupMapState(campaign, 0, map)));
+    saveSnapshot(campaign, mapState, "tactical");
+    set({ campaign, mapState, screen: "tactical" });
   },
 
   selectUnit: (unitId) =>

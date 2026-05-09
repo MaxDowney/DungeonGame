@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { CampaignScreen } from "./components/Screens/CampaignScreen";
 import { DMLoadoutScreen } from "./components/Screens/DMLoadoutScreen";
 import { HeroLoadoutScreen } from "./components/Screens/HeroLoadoutScreen";
+import { MapEditorScreen } from "./components/Screens/MapEditorScreen";
 import { ResolutionScreen } from "./components/Screens/ResolutionScreen";
 import { TacticalScreen } from "./components/Screens/TacticalScreen";
 import { TitleScreen } from "./components/Screens/TitleScreen";
@@ -37,6 +38,8 @@ export function App() {
         return <HeroLoadoutScreen />;
       case "dmLoadout":
         return <DMLoadoutScreen />;
+      case "mapEditor":
+        return <MapEditorScreen />;
       case "tactical":
         return <TacticalScreen />;
       case "resolution":

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Play, ScrollText, Settings, Swords } from "lucide-react";
+import { Map, Play, ScrollText, Settings, Swords } from "lucide-react";
 import { loadSnapshot } from "../../game/state/persistence";
 import { useGameStore } from "../../game/state/store";
 
@@ -7,6 +7,7 @@ export function TitleScreen() {
   const startNewCampaign = useGameStore((state) => state.startNewCampaign);
   const continueCampaign = useGameStore((state) => state.continueCampaign);
   const startCurrentMap = useGameStore((state) => state.startCurrentMap);
+  const setScreen = useGameStore((state) => state.setScreen);
   const hasSave = Boolean(loadSnapshot());
 
   const quickTest = () => {
@@ -49,6 +50,10 @@ export function TitleScreen() {
           <button className="secondary-button" onClick={quickTest}>
             <Swords size={18} />
             Quick Test
+          </button>
+          <button className="secondary-button" onClick={() => setScreen("mapEditor")}>
+            <Map size={18} />
+            Map Editor
           </button>
           <button className="secondary-button" onClick={startCurrentMap} disabled>
             <Settings size={18} />

@@ -1,4 +1,5 @@
 import { campaignMaps, mapById } from "../data/maps";
+import { findCustomMap } from "../data/customMaps";
 import { dmCards } from "../data/dmCards";
 import { dmUpgrades } from "../data/upgrades";
 import { heroCards } from "../data/heroCards";
@@ -8,6 +9,7 @@ import { randomEncounterCards } from "../data/randomEncounters";
 import type {
   CampaignState,
   HeroProgress,
+  MapDefinition,
   MapState,
   PendingRewards,
   Position,
@@ -131,7 +133,7 @@ const hasUpgrade = (campaign: CampaignState, upgradeId: string): boolean =>
 
 const createMonsterUnit = (
   campaign: CampaignState,
-  mapMonster: (typeof campaignMaps)[number]["monsters"][number],
+  mapMonster: MapDefinition["monsters"][number],
 ): Unit => {
   const template = monsterTemplateById[mapMonster.templateId];
   const isBrute = template.family === "brute";
@@ -172,7 +174,7 @@ const createMonsterUnit = (
 };
 
 export const roomNarrationFor = (
-  map: (typeof campaignMaps)[number],
+  map: MapDefinition,
   roomId: string | undefined,
 ): RoomNarration | undefined => {
   if (!roomId) return undefined;
@@ -186,8 +188,12 @@ export const roomNarrationFor = (
   };
 };
 
-export const setupMapState = (campaign: CampaignState, mapIndex = campaign.currentMapIndex): MapState => {
-  const map = campaignMaps[mapIndex] ?? campaignMaps[0];
+export const setupMapState = (
+  campaign: CampaignState,
+  mapIndex = campaign.currentMapIndex,
+  customMap?: MapDefinition,
+): MapState => {
+  const map = customMap ?? campaignMaps[mapIndex] ?? campaignMaps[0];
   const heroes = heroTemplates.map((hero, index) =>
     createHeroUnit(hero.id, campaign.heroes[hero.id], map.heroStarts[index]),
   );
@@ -279,7 +285,8 @@ export const setupMapState = (campaign: CampaignState, mapIndex = campaign.curre
   };
 };
 
-export const currentMapDefinition = (mapState: MapState) => mapById[mapState.mapId];
+export const currentMapDefinition = (mapState: MapState) =>
+  mapById[mapState.mapId] ?? findCustomMap(mapState.mapId) ?? campaignMaps[0];
 
 export const mapWithDoors = (mapState: MapState) => {
   const map = currentMapDefinition(mapState);

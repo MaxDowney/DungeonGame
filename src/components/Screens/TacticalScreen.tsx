@@ -93,8 +93,11 @@ function UnitPanel() {
   const pressureLabel = selected.agro?.pressure === 3 ? "Locked" : selected.agro?.pressure === 2 ? "Firm" : selected.agro?.pressure === 1 ? "Loose" : "Searching";
   return (
     <aside className={`panel tactical-panel p-4 ${isActive ? "active-unit-panel" : ""}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="selected-unit-heading">
+        <div className="selected-unit-portrait" style={{ "--unit-color": selected.color } as CSSProperties}>
+          <img src={unitPortraitUrl(selected)} alt="" />
+        </div>
+        <div className="min-w-0 flex-1">
           <div className="eyebrow">{selected.side === "heroes" ? selected.role : selected.family}</div>
           <h3 className="font-display text-2xl font-bold text-amber-100">{selected.name}</h3>
         </div>

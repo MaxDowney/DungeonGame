@@ -10,35 +10,23 @@ const expressionSides = (dice: DiceExpression[]): number => {
 };
 
 const d10Geometry = () => {
-  const radius = 1.06;
-  const height = 1.55;
-  const twist = Math.PI / 5;
-  const vertices: number[] = [];
+  const radius = 1.12;
+  const poleHeight = 1.2;
+  const ringTilt = 0.28;
+  const vertices: number[] = [0, poleHeight, 0, 0, -poleHeight, 0];
   const indices: number[] = [];
 
-  vertices.push(0, height / 2, 0);
-  vertices.push(0, -height / 2, 0);
-
-  for (let index = 0; index < 5; index += 1) {
-    const angle = (index / 5) * Math.PI * 2 - Math.PI / 2;
-    vertices.push(Math.cos(angle) * radius, 0.24, Math.sin(angle) * radius);
+  for (let index = 0; index < 10; index += 1) {
+    const angle = (index / 10) * Math.PI * 2 - Math.PI / 2;
+    const y = index % 2 === 0 ? ringTilt : -ringTilt;
+    vertices.push(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
   }
 
-  for (let index = 0; index < 5; index += 1) {
-    const angle = (index / 5) * Math.PI * 2 - Math.PI / 2 + twist;
-    vertices.push(Math.cos(angle) * radius, -0.24, Math.sin(angle) * radius);
-  }
-
-  for (let index = 0; index < 5; index += 1) {
-    const next = (index + 1) % 5;
-    const topA = 2 + index;
-    const topB = 2 + next;
-    const bottomA = 7 + index;
-    const bottomB = 7 + next;
-    indices.push(0, topA, topB);
-    indices.push(topA, bottomA, bottomB);
-    indices.push(topA, bottomB, topB);
-    indices.push(1, bottomB, bottomA);
+  for (let index = 0; index < 10; index += 1) {
+    const current = 2 + index;
+    const next = 2 + ((index + 1) % 10);
+    indices.push(0, current, 1);
+    indices.push(0, 1, next);
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -54,26 +42,75 @@ const geometryFor = (sides: number) => {
     case 3:
       return new THREE.ConeGeometry(1.15, 1.7, 3, 1);
     case 4:
-      return new THREE.TetrahedronGeometry(1.25, 0);
+      return new THREE.TetrahedronGeometry(1.28, 0);
     case 8:
-      return new THREE.OctahedronGeometry(1.18, 0);
+      return new THREE.OctahedronGeometry(1.2, 0);
     case 10:
       return d10Geometry();
     case 12:
-      return new THREE.DodecahedronGeometry(1.12, 0);
+      return new THREE.DodecahedronGeometry(1.14, 0);
     case 20:
-      return new THREE.IcosahedronGeometry(1.16, 0);
+      return new THREE.IcosahedronGeometry(1.18, 0);
     case 6:
     default:
-      return new THREE.BoxGeometry(1.65, 1.65, 1.65);
+      return new THREE.BoxGeometry(1.62, 1.62, 1.62);
   }
+};
+
+const stableRotationFor = (sides: number): [number, number, number] => {
+  switch (sides) {
+    case 4:
+      return [0.42, -0.62, -0.1];
+    case 8:
+      return [0.58, 0.4, 0.22];
+    case 10:
+      return [0.32, -0.03, 0.02];
+    case 12:
+      return [0.46, 0.5, 0.16];
+    case 20:
+      return [0.52, 0.34, 0.18];
+    case 3:
+      return [0.52, 0.0, 0.08];
+    case 6:
+    default:
+      return [0.32, -0.44, 0.08];
+  }
+};
+
+const facePlacementFor = (sides: number) => {
+  switch (sides) {
+    case 4:
+      return { size: [0.9, 0.72] as const, position: [0, 0.04, 1.02] as const, rotation: [-0.28, 0, 0] as const };
+    case 8:
+      return { size: [0.9, 0.72] as const, position: [0, 0.03, 1.05] as const, rotation: [-0.18, 0, 0] as const };
+    case 10:
+      return { size: [0.84, 0.66] as const, position: [0, 0.02, 1.08] as const, rotation: [0.02, 0, 0] as const };
+    case 12:
+      return { size: [0.92, 0.74] as const, position: [0, 0.03, 1.07] as const, rotation: [0.02, 0, 0] as const };
+    case 20:
+      return { size: [0.84, 0.67] as const, position: [0, 0.03, 1.08] as const, rotation: [-0.07, 0, 0] as const };
+    case 3:
+      return { size: [0.88, 0.68] as const, position: [0, 0.03, 1.03] as const, rotation: [-0.18, 0, 0] as const };
+    case 6:
+    default:
+      return { size: [1, 0.78] as const, position: [0, 0, 0.818] as const, rotation: [0, 0, 0] as const };
+  }
+};
+
+const dieColorFor = (tone: "normal" | "critical" | "danger") => {
+  if (tone === "danger") return { body: 0x8c1022, edge: 0x22050a, emissive: 0x230006, numeral: "#190507", glint: "#ffc1c1" };
+  if (tone === "critical") return { body: 0xd99a2b, edge: 0x3b2305, emissive: 0x2c1700, numeral: "#2f1a04", glint: "#fff0b0" };
+  return { body: 0xb76b32, edge: 0x241106, emissive: 0x160803, numeral: "#1f0e05", glint: "#ffe0a6" };
 };
 
 const createFaceTexture = () => {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
   canvas.height = 512;
-  return new THREE.CanvasTexture(canvas);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
 };
 
 const drawFaceTexture = (
@@ -84,51 +121,32 @@ const drawFaceTexture = (
   const canvas = texture.image as HTMLCanvasElement;
   const context = canvas.getContext("2d");
   if (!context) return;
+  const colors = dieColorFor(tone);
 
   context.clearRect(0, 0, canvas.width, canvas.height);
-  const accent = tone === "danger" ? "#3a0509" : tone === "critical" ? "#4b2c05" : "#2f1807";
-  const highlight = tone === "danger" ? "rgba(255, 190, 190, .56)" : tone === "critical" ? "rgba(255, 237, 155, .62)" : "rgba(255, 228, 176, .5)";
-
   context.save();
-  context.translate(canvas.width / 2, canvas.height / 2 + 2);
-  context.rotate(-0.04);
+  context.translate(canvas.width / 2, canvas.height / 2 + 4);
+  context.rotate(-0.035);
   context.font = "900 250px Georgia, serif";
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.lineJoin = "round";
-  context.globalAlpha = 0.92;
-  context.strokeStyle = "rgba(0, 0, 0, .58)";
-  context.lineWidth = 32;
+  context.globalAlpha = 0.95;
+  context.strokeStyle = "rgba(0, 0, 0, .72)";
+  context.lineWidth = 38;
   context.strokeText(String(value), 0, 0);
   context.globalAlpha = 0.72;
-  context.fillStyle = accent;
+  context.strokeStyle = "rgba(255, 238, 196, .42)";
+  context.lineWidth = 11;
+  context.strokeText(String(value), -5, -7);
+  context.globalAlpha = 0.9;
+  context.fillStyle = colors.numeral;
   context.fillText(String(value), 0, 0);
-  context.globalAlpha = 0.46;
-  context.translate(-7, -8);
-  context.fillStyle = highlight;
-  context.fillText(String(value), 0, 0);
+  context.globalAlpha = 0.42;
+  context.fillStyle = colors.glint;
+  context.fillText(String(value), -7, -9);
   context.restore();
   texture.needsUpdate = true;
-};
-
-const facePlacementFor = (sides: number) => {
-  switch (sides) {
-    case 4:
-      return { size: [1.05, 0.82] as const, position: [0, 0.05, 1.03] as const, rotation: [-0.38, 0, 0] as const };
-    case 8:
-      return { size: [0.98, 0.78] as const, position: [0, 0.03, 1.02] as const, rotation: [-0.2, 0, 0] as const };
-    case 10:
-      return { size: [0.92, 0.72] as const, position: [0, 0.02, 1.08] as const, rotation: [0.02, 0, 0] as const };
-    case 12:
-      return { size: [0.98, 0.78] as const, position: [0, 0.03, 1.02] as const, rotation: [0, 0, 0] as const };
-    case 20:
-      return { size: [0.9, 0.72] as const, position: [0, 0.03, 1.05] as const, rotation: [-0.08, 0, 0] as const };
-    case 3:
-      return { size: [0.96, 0.74] as const, position: [0, 0.03, 1.03] as const, rotation: [-0.25, 0, 0] as const };
-    case 6:
-    default:
-      return { size: [1.08, 0.86] as const, position: [0, 0, 0.831] as const, rotation: [0, 0, 0] as const };
-  }
 };
 
 export function Dice3D({
@@ -158,7 +176,7 @@ export function Dice3D({
     setRollingFace(Math.floor(Math.random() * sides) + 1);
     const timer = window.setInterval(() => {
       setRollingFace(Math.floor(Math.random() * sides) + 1);
-    }, 72);
+    }, 64);
 
     return () => window.clearInterval(timer);
   }, [rolling, sides, value]);
@@ -174,47 +192,77 @@ export function Dice3D({
     const mount = mountRef.current;
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(150, 150);
+    renderer.setSize(176, 176);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-    camera.position.set(0, 0.25, 5.4);
+    const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 100);
+    camera.position.set(0, 0.34, 5.45);
 
-    const key = new THREE.DirectionalLight(0xfff0c2, 2.5);
-    key.position.set(3, 4, 5);
+    const tone = danger ? "danger" : critical ? "critical" : "normal";
+    const colors = dieColorFor(tone);
+
+    const hemi = new THREE.HemisphereLight(0xfff0c7, 0x170713, 1.35);
+    scene.add(hemi);
+
+    const key = new THREE.DirectionalLight(0xfff2c9, 3.8);
+    key.position.set(3.6, 5.2, 5.4);
     key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
     scene.add(key);
-    scene.add(new THREE.AmbientLight(0x7c4dff, 0.85));
-    const rim = new THREE.PointLight(danger ? 0xff284d : critical ? 0xffd54a : 0x77aaff, 1.8, 12);
-    rim.position.set(-3, 1.2, 3);
+
+    const rim = new THREE.PointLight(critical ? 0xffd45c : danger ? 0xff3454 : 0x9ac2ff, 2.4, 12);
+    rim.position.set(-3.8, 1.35, 3.4);
     scene.add(rim);
 
+    const floor = new THREE.Mesh(
+      new THREE.CircleGeometry(1.58, 64),
+      new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.32 }),
+    );
+    floor.position.set(0, -1.34, -0.15);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const dieGroup = new THREE.Group();
+    scene.add(dieGroup);
+
     const geometry = geometryFor(sides);
-    const material = new THREE.MeshStandardMaterial({
-      color: danger ? 0x7f1020 : critical ? 0xf4b63e : 0xc27a36,
-      roughness: 0.42,
-      metalness: 0.2,
+    const material = new THREE.MeshPhysicalMaterial({
+      color: colors.body,
+      roughness: 0.27,
+      metalness: 0.08,
+      clearcoat: 0.78,
+      clearcoatRoughness: 0.2,
+      reflectivity: 0.65,
       flatShading: true,
-      emissive: danger ? 0x260007 : critical ? 0x342000 : 0x1c0e05,
-      emissiveIntensity: 0.22,
+      emissive: colors.emissive,
+      emissiveIntensity: 0.18,
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    mesh.rotation.set(0.58, 0.36, 0.18);
-    scene.add(mesh);
+    mesh.rotation.set(...stableRotationFor(sides));
+    dieGroup.add(mesh);
 
     const edges = new THREE.LineSegments(
-      new THREE.EdgesGeometry(geometry),
-      new THREE.LineBasicMaterial({ color: critical ? 0xfff3c4 : 0x2b160a, transparent: true, opacity: 0.62 }),
+      new THREE.EdgesGeometry(geometry, 18),
+      new THREE.LineBasicMaterial({
+        color: colors.edge,
+        transparent: true,
+        opacity: 0.72,
+      }),
     );
     mesh.add(edges);
 
     const faceTexture = createFaceTexture();
     faceTextureRef.current = faceTexture;
-    drawFaceTexture(faceTexture, rollingFace, danger ? "danger" : critical ? "critical" : "normal");
+    drawFaceTexture(faceTexture, rollingFace, tone);
     const facePlacement = facePlacementFor(sides);
     const faceGeometry = new THREE.PlaneGeometry(facePlacement.size[0], facePlacement.size[1]);
     const faceMaterial = new THREE.MeshBasicMaterial({
@@ -224,34 +272,38 @@ export function Dice3D({
       depthWrite: false,
       side: THREE.DoubleSide,
       polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2,
+      polygonOffsetFactor: -6,
+      polygonOffsetUnits: -6,
     });
     const faceLabel = new THREE.Mesh(faceGeometry, faceMaterial);
     faceLabel.position.set(facePlacement.position[0], facePlacement.position[1], facePlacement.position[2]);
-    faceLabel.rotation.set(facePlacement.rotation[0], facePlacement.rotation[1], facePlacement.rotation[2] - 0.02);
+    faceLabel.rotation.set(facePlacement.rotation[0], facePlacement.rotation[1], facePlacement.rotation[2]);
     mesh.add(faceLabel);
-
-    const shadow = new THREE.Mesh(
-      new THREE.CircleGeometry(1.35, 48),
-      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22 }),
-    );
-    shadow.position.set(0, -1.45, -0.25);
-    shadow.rotation.x = -Math.PI / 2;
-    scene.add(shadow);
 
     let frame = 0;
     let raf = 0;
+    const settleRotation = stableRotationFor(sides);
     const animate = () => {
       frame += 1;
-      const rollBoost = rolling ? 5.5 : 1;
-      mesh.rotation.x += 0.009 * rollBoost;
-      mesh.rotation.y += 0.013 * rollBoost;
-      mesh.rotation.z += rolling ? 0.041 : 0.003;
-      const bounce = rolling ? Math.abs(Math.sin(frame / 5)) * 0.72 : Math.sin(frame / 34) * 0.08;
-      mesh.position.y = bounce;
-      mesh.position.x = rolling ? Math.sin(frame / 7) * 0.38 : 0;
-      shadow.scale.setScalar(rolling ? 1 + Math.sin(frame / 5) * 0.16 : 1);
+
+      if (rolling) {
+        dieGroup.rotation.x += 0.16;
+        dieGroup.rotation.y += 0.22;
+        dieGroup.rotation.z += 0.13;
+        dieGroup.position.x = Math.sin(frame / 3.8) * 0.42;
+        dieGroup.position.y = Math.abs(Math.sin(frame / 4.6)) * 0.82;
+      } else {
+        dieGroup.rotation.x *= 0.84;
+        dieGroup.rotation.y *= 0.84;
+        dieGroup.rotation.z *= 0.84;
+        dieGroup.position.x *= 0.82;
+        dieGroup.position.y = Math.sin(frame / 42) * 0.045;
+        mesh.rotation.x += (settleRotation[0] - mesh.rotation.x) * 0.1;
+        mesh.rotation.y += (settleRotation[1] - mesh.rotation.y) * 0.1;
+        mesh.rotation.z += (settleRotation[2] - mesh.rotation.z) * 0.1;
+      }
+
+      floor.scale.setScalar(rolling ? 1 + Math.abs(Math.sin(frame / 4.6)) * 0.2 : 1);
       renderer.render(scene, camera);
       raf = requestAnimationFrame(animate);
     };
@@ -264,8 +316,10 @@ export function Dice3D({
       faceGeometry.dispose();
       faceMaterial.dispose();
       faceTexture.dispose();
-      faceTextureRef.current = null;
+      floor.geometry.dispose();
+      (floor.material as THREE.Material).dispose();
       renderer.dispose();
+      faceTextureRef.current = null;
       mount.removeChild(renderer.domElement);
     };
   }, [critical, danger, rolling, sides]);
