@@ -9,6 +9,46 @@ const expressionSides = (dice: DiceExpression[]): number => {
   return sides.includes(20) ? 20 : sides.sort((a, b) => b - a)[0] ?? 6;
 };
 
+const d10Geometry = () => {
+  const radius = 1.06;
+  const height = 1.55;
+  const twist = Math.PI / 5;
+  const vertices: number[] = [];
+  const indices: number[] = [];
+
+  vertices.push(0, height / 2, 0);
+  vertices.push(0, -height / 2, 0);
+
+  for (let index = 0; index < 5; index += 1) {
+    const angle = (index / 5) * Math.PI * 2 - Math.PI / 2;
+    vertices.push(Math.cos(angle) * radius, 0.24, Math.sin(angle) * radius);
+  }
+
+  for (let index = 0; index < 5; index += 1) {
+    const angle = (index / 5) * Math.PI * 2 - Math.PI / 2 + twist;
+    vertices.push(Math.cos(angle) * radius, -0.24, Math.sin(angle) * radius);
+  }
+
+  for (let index = 0; index < 5; index += 1) {
+    const next = (index + 1) % 5;
+    const topA = 2 + index;
+    const topB = 2 + next;
+    const bottomA = 7 + index;
+    const bottomB = 7 + next;
+    indices.push(0, topA, topB);
+    indices.push(topA, bottomA, bottomB);
+    indices.push(topA, bottomB, topB);
+    indices.push(1, bottomB, bottomA);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  geometry.normalizeNormals();
+  return geometry;
+};
+
 const geometryFor = (sides: number) => {
   switch (sides) {
     case 3:
@@ -18,7 +58,7 @@ const geometryFor = (sides: number) => {
     case 8:
       return new THREE.OctahedronGeometry(1.18, 0);
     case 10:
-      return new THREE.ConeGeometry(1.05, 1.75, 10, 1);
+      return d10Geometry();
     case 12:
       return new THREE.DodecahedronGeometry(1.12, 0);
     case 20:
@@ -31,8 +71,8 @@ const geometryFor = (sides: number) => {
 
 const createFaceTexture = () => {
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 192;
+  canvas.width = 512;
+  canvas.height = 512;
   return new THREE.CanvasTexture(canvas);
 };
 
@@ -46,37 +86,49 @@ const drawFaceTexture = (
   if (!context) return;
 
   context.clearRect(0, 0, canvas.width, canvas.height);
-  const accent = tone === "danger" ? "#ffb4b4" : tone === "critical" ? "#fff0a5" : "#ffe7b0";
-  const shadow = tone === "danger" ? "rgba(127, 16, 32, .86)" : tone === "critical" ? "rgba(180, 108, 0, .72)" : "rgba(32, 15, 5, .78)";
-  const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, "rgba(255,255,255,.2)");
-  gradient.addColorStop(0.42, "rgba(0,0,0,.16)");
-  gradient.addColorStop(1, "rgba(0,0,0,.44)");
-  context.fillStyle = gradient;
-  context.beginPath();
-  context.roundRect(18, 16, canvas.width - 36, canvas.height - 32, 34);
-  context.fill();
-  context.lineWidth = 8;
-  context.strokeStyle = "rgba(24, 12, 4, .86)";
-  context.stroke();
-  context.lineWidth = 3;
-  context.strokeStyle = accent;
-  context.stroke();
+  const accent = tone === "danger" ? "#3a0509" : tone === "critical" ? "#4b2c05" : "#2f1807";
+  const highlight = tone === "danger" ? "rgba(255, 190, 190, .56)" : tone === "critical" ? "rgba(255, 237, 155, .62)" : "rgba(255, 228, 176, .5)";
 
   context.save();
-  context.translate(canvas.width / 2, canvas.height / 2 + 5);
+  context.translate(canvas.width / 2, canvas.height / 2 + 2);
   context.rotate(-0.04);
-  context.font = "900 104px Georgia, serif";
+  context.font = "900 250px Georgia, serif";
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.lineJoin = "round";
-  context.strokeStyle = shadow;
-  context.lineWidth = 13;
+  context.globalAlpha = 0.92;
+  context.strokeStyle = "rgba(0, 0, 0, .58)";
+  context.lineWidth = 32;
   context.strokeText(String(value), 0, 0);
+  context.globalAlpha = 0.72;
   context.fillStyle = accent;
+  context.fillText(String(value), 0, 0);
+  context.globalAlpha = 0.46;
+  context.translate(-7, -8);
+  context.fillStyle = highlight;
   context.fillText(String(value), 0, 0);
   context.restore();
   texture.needsUpdate = true;
+};
+
+const facePlacementFor = (sides: number) => {
+  switch (sides) {
+    case 4:
+      return { size: [1.05, 0.82] as const, position: [0, 0.05, 1.03] as const, rotation: [-0.38, 0, 0] as const };
+    case 8:
+      return { size: [0.98, 0.78] as const, position: [0, 0.03, 1.02] as const, rotation: [-0.2, 0, 0] as const };
+    case 10:
+      return { size: [0.92, 0.72] as const, position: [0, 0.02, 1.08] as const, rotation: [0.02, 0, 0] as const };
+    case 12:
+      return { size: [0.98, 0.78] as const, position: [0, 0.03, 1.02] as const, rotation: [0, 0, 0] as const };
+    case 20:
+      return { size: [0.9, 0.72] as const, position: [0, 0.03, 1.05] as const, rotation: [-0.08, 0, 0] as const };
+    case 3:
+      return { size: [0.96, 0.74] as const, position: [0, 0.03, 1.03] as const, rotation: [-0.25, 0, 0] as const };
+    case 6:
+    default:
+      return { size: [1.08, 0.86] as const, position: [0, 0, 0.831] as const, rotation: [0, 0, 0] as const };
+  }
 };
 
 export function Dice3D({
@@ -163,17 +215,21 @@ export function Dice3D({
     const faceTexture = createFaceTexture();
     faceTextureRef.current = faceTexture;
     drawFaceTexture(faceTexture, rollingFace, danger ? "danger" : critical ? "critical" : "normal");
-    const faceGeometry = new THREE.PlaneGeometry(1.34, 0.98);
+    const facePlacement = facePlacementFor(sides);
+    const faceGeometry = new THREE.PlaneGeometry(facePlacement.size[0], facePlacement.size[1]);
     const faceMaterial = new THREE.MeshBasicMaterial({
       map: faceTexture,
       transparent: true,
-      depthTest: false,
+      depthTest: true,
       depthWrite: false,
       side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
     });
     const faceLabel = new THREE.Mesh(faceGeometry, faceMaterial);
-    faceLabel.position.set(0, 0, 1.24);
-    faceLabel.rotation.set(0, 0, -0.02);
+    faceLabel.position.set(facePlacement.position[0], facePlacement.position[1], facePlacement.position[2]);
+    faceLabel.rotation.set(facePlacement.rotation[0], facePlacement.rotation[1], facePlacement.rotation[2] - 0.02);
     mesh.add(faceLabel);
 
     const shadow = new THREE.Mesh(
