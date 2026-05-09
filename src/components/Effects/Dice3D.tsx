@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { DiceExpression } from "../../game/types";
 
@@ -44,6 +44,21 @@ export function Dice3D({
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const sides = useMemo(() => expressionSides(dice), [dice]);
+  const [rollingFace, setRollingFace] = useState<string | number>(value ?? `d${sides}`);
+
+  useEffect(() => {
+    if (!rolling) {
+      setRollingFace(value ?? `d${sides}`);
+      return;
+    }
+
+    setRollingFace(Math.floor(Math.random() * sides) + 1);
+    const timer = window.setInterval(() => {
+      setRollingFace(Math.floor(Math.random() * sides) + 1);
+    }, 72);
+
+    return () => window.clearInterval(timer);
+  }, [rolling, sides, value]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -125,7 +140,7 @@ export function Dice3D({
   return (
     <div className={`dice3d ${critical ? "critical" : ""} ${danger ? "danger" : ""} ${rolling ? "rolling" : ""}`}>
       <div ref={mountRef} className="dice3d-canvas" />
-      <div className="dice3d-value">{value ?? `d${sides}`}</div>
+      <div className="dice3d-value">{rollingFace}</div>
     </div>
   );
 }

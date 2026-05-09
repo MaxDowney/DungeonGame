@@ -51,6 +51,9 @@ const tip = {
   log: "Game Log: rules history for moves, attacks, damage, healing, threat, and objectives.",
 };
 
+const unitMatUrl = (side: Unit["side"]) =>
+  `${import.meta.env.BASE_URL}assets/mats/${side === "heroes" ? "hero-mat.png" : "monster-mat.png"}`;
+
 function HealthBar({ unit }: { unit: Unit }) {
   return (
     <div className="meter hp" title={tip.hp} data-tooltip={`${tip.hp} ${unit.name} has ${unit.hp}/${unit.maxHp} HP.`}>
@@ -855,6 +858,10 @@ function UnitInspectOverlay({
     ? mapState.heroes.find((hero) => hero.id === unit.agro?.currentTargetId)
     : undefined;
   const monsterActions = unit.side === "dm" ? monsterTemplateById[unit.templateId]?.actions ?? [] : [];
+  const matStyle = {
+    "--unit-color": unit.color,
+    "--unit-mat": `url("${unitMatUrl(unit.side)}")`,
+  } as CSSProperties;
 
   return (
     <motion.div
@@ -866,11 +873,12 @@ function UnitInspectOverlay({
       <button className="unit-inspect-scrim" onClick={onClose} title="Close unit card" />
       <motion.article
         className={`unit-inspect-card ${unit.side}`}
+        style={matStyle}
         initial={{ y: 28, scale: 0.92, rotateX: -8 }}
         animate={{ y: 0, scale: 1, rotateX: 0 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
       >
-        <div className="unit-inspect-portrait" style={{ "--unit-color": unit.color } as CSSProperties}>
+        <div className="unit-inspect-portrait">
           <span>{unit.portraitGlyph}</span>
         </div>
         <div className="unit-inspect-heading">
